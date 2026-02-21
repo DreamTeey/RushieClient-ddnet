@@ -75,6 +75,8 @@
 #include "components/rclient/rclient_indicator.h"
 #include "components/rclient/playermenu.h"
 
+#include "components/mclient/mclient.h"
+
 //Tater
 #include "components/tclient/bg_draw.h"
 #include "components/tclient/bindchat.h"
@@ -249,6 +251,9 @@ public:
 	CEdgeHelper m_EdgeHelper;
 	CRClientIndicator m_RClientIndicator;
 	CPlayerMenu m_RiPlayerMenu;
+
+	// MClient Components
+	CMClient m_MClient;
 
 private:
 	std::vector<class CComponent *> m_vpAll;
