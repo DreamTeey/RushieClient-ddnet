@@ -176,7 +176,22 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
         if(g_Config.m_McRandomSkinRotate)
         {
             DoSubOption(pCol, [&](CUIRect* pRect) {
+                Ui()->DoScrollbarOption(&g_Config.m_McRandomSkinRotateInterval, &g_Config.m_McRandomSkinRotateInterval, pRect, MCLocalize("轮换间隔(秒)"), 1, 60);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
                 DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McRandomSkinRotateOnlyLeftClick, MCLocalize("仅在左键时生效"), &g_Config.m_McRandomSkinRotateOnlyLeftClick, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McRandomSkinRotateMain, MCLocalize("主体更换"), &g_Config.m_McRandomSkinRotateMain, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McRandomSkinRotateDummy, MCLocalize("分身更换"), &g_Config.m_McRandomSkinRotateDummy, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McRandomSkinRotateMainColor, MCLocalize("主体随机颜色"), &g_Config.m_McRandomSkinRotateMainColor, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McRandomSkinRotateDummyColor, MCLocalize("分身随机颜色"), &g_Config.m_McRandomSkinRotateDummyColor, pRect, LineSize);
             });
         }
 

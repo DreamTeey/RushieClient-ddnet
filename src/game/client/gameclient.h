@@ -75,6 +75,8 @@
 #include "components/rclient/rclient_indicator.h"
 #include "components/rclient/playermenu.h"
 
+#include "components/mclient/mclient.h"
+
 //Tater
 #include "components/tclient/bg_draw.h"
 #include "components/tclient/bindchat.h"
@@ -93,9 +95,6 @@
 #include "components/tclient/trails.h"
 #include "components/tclient/translate.h"
 #include "components/tclient/warlist.h"
-
-//MClient
-#include "components/mclient/mclient.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
@@ -253,7 +252,7 @@ public:
 	CRClientIndicator m_RClientIndicator;
 	CPlayerMenu m_RiPlayerMenu;
 
-	// MClient Component
+	// MClient Components
 	CMClient m_MClient;
 
 private:
