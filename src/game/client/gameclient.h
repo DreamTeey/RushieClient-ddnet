@@ -93,6 +93,9 @@
 #include "components/tclient/trails.h"
 #include "components/tclient/translate.h"
 #include "components/tclient/warlist.h"
+
+//MClient
+#include "components/mclient/mclient.h"
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
@@ -249,6 +252,9 @@ public:
 	CEdgeHelper m_EdgeHelper;
 	CRClientIndicator m_RClientIndicator;
 	CPlayerMenu m_RiPlayerMenu;
+
+	// MClient Component
+	CMClient m_MClient;
 
 private:
 	std::vector<class CComponent *> m_vpAll;
