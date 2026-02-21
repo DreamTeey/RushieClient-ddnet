@@ -27,7 +27,11 @@ const char *RCLocalize(const char *pStr, const char *pContext)
 {
 	return Localize(pStr, pContext);
 }
-
+// MClient
+const char *MCLocalize(const char *pStr, const char *pContext)
+{
+	return Localize(pStr, pContext);
+}
 void CLocalizationDatabase::LoadIndexfile(IStorage *pStorage, IConsole *pConsole)
 {
 	m_vLanguages.clear();

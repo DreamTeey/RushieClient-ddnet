@@ -67,4 +67,6 @@ extern CLocalizationDatabase g_Localization;
 // RClient
 [[gnu::format_arg(1)]] extern const char *RCLocalize(const char *pStr, const char *pContext = "");
 
+[[gnu::format_arg(1)]] extern const char *MCLocalize(const char *pStr, const char *pContext = "");
+
 #endif

@@ -1473,6 +1473,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 		TCLocalize("TClient"),
 		Localize("Profiles"),
 		Localize("Rushie"),
+		MCLocalize("MClient"),
 		Localize("Configs")};
 
 	static CButtonContainer s_aTabButtons[SETTINGS_LENGTH];
@@ -1553,9 +1554,14 @@ void CMenus::RenderSettings(CUIRect MainView)
 		GameClient()->m_MenuBackground.ChangePosition(15);
 		RenderSettingsRushie(MainView);
 	}
-	else if(g_Config.m_UiSettingsPage == SETTINGS_CONFIGS)
+	else if(g_Config.m_UiSettingsPage == SETTINGS_MCLIENT)
 	{
 		GameClient()->m_MenuBackground.ChangePosition(15);
+		RenderSettingsMClient(MainView);
+	}
+	else if(g_Config.m_UiSettingsPage == SETTINGS_CONFIGS)
+	{
+		GameClient()->m_MenuBackground.ChangePosition(16);
 		RenderSettingsTClientConfigs(MainView);
 	}
 	else

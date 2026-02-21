@@ -13,3 +13,6 @@ SET_CONFIG_DOMAIN(ConfigDomain::TCLIENT)
 
 SET_CONFIG_DOMAIN(ConfigDomain::RCLIENT)
 #include "config_variables_rclient.h"
+
+SET_CONFIG_DOMAIN(ConfigDomain::MCLIENT)
+#include "config_variables_mclient.h"

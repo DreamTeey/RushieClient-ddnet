@@ -673,6 +673,7 @@ public:
 		SETTINGS_TCLIENT,
 		SETTINGS_PROFILES,
 		SETTINGS_RUSHIE,
+		SETTINGS_MCLIENT,
 		SETTINGS_CONFIGS,
 
 		SETTINGS_LENGTH,
@@ -842,6 +843,11 @@ private:
 	void RenderSettingsRushieInfo(CUIRect MainView);
 	void RenderSettingsRushieBindWheelSpec(CUIRect MainView);
 	void RenderSettingsRushieVoiceVolumes(CUIRect MainView);
+
+	// MClient
+	void RenderSettingsMClient(CUIRect MainView);
+	void RenderSettingsMClientSettings(CUIRect MainView);
+	void RenderSettingsMClientInfo(CUIRect MainView);
 
 	const CWarType *m_pRemoveWarType = nullptr;
 	void PopupConfirmRemoveWarType();
