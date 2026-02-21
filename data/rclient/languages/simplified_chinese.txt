@@ -1,0 +1,527 @@
+Settings
+== 设置
+
+Bindwheel in spec
+== 观战绑定轮盘
+
+Info
+== 信息
+
+Name:
+== 名称：
+
+Name
+== 名称
+
+Command:
+== 命令：
+
+Command
+== 命令
+
+Override Selected
+== 覆盖已选项
+
+Add Bind
+== 添加绑定
+
+Remove Bind
+== 删除绑定
+
+Use left mouse to select
+== 使用鼠标左键选择
+
+Use right mouse to swap with selected
+== 使用鼠标右键与已选项交换
+
+Use middle mouse select without copy
+== 使用鼠标中键选择（不复制）
+
+Rclient bindwheel settings
+== Rclient 绑定轮盘设置
+
+playernickname to enter nickname
+== 输入玩家昵称
+
+Do "playernickname" yourself in u need
+== 需要时手动输入“playernickname”
+
+playerid to enter id
+== 输入玩家ID
+
+Bind Wheel In Spec Key
+== 观战绑定轮盘按键
+
+Reset position of mouse when opening bindwheel
+== 打开绑定轮盘时重置鼠标位置
+
+Rushie Client Links
+== Rushie 客户端链接
+
+Discord
+== Discord
+
+Website
+== 官网
+
+Config Files
+== 配置文件
+
+RClient Settings
+== RClient 设置
+
+RClient Developer
+== RClient 开发者
+
+Hide Settings Tabs
+== 隐藏设置标签页
+
+Bindwheel
+== 绑定轮盘
+
+Unlock mouse in scoreboard
+== 记分板解锁鼠标
+
+Tracker for spectating player
+== 观战玩家追踪器
+
+Dummy pseudo
+== 假人伪名
+
+Deepfly
+== 深飞
+
+45° bind
+== 45° 绑定
+
+Small sens bind
+== 低灵敏度绑定
+
+Left jump
+== 左跳
+
+Right jump
+== 右跳
+
+Deepfly toggle
+== 深飞开关
+
+Auto Change Player Info
+== 自动切换玩家信息
+
+[Chatbinds]
+Find skin
+== 查找皮肤
+
+[Chatbinds]
+Copy skin
+== 复制皮肤
+
+[Chatbinds]
+Find player
+== 查找玩家
+
+[Chatbinds]
+Copy color
+== 复制颜色
+
+[Chatbinds]
+Find skin from ddstats
+== 从 DDStats 查找皮肤
+
+[Chatbinds]
+Copy skin from ddstats
+== 从 DDStats 复制皮肤
+
+[Chatbinds]
+Find player from ddstats
+== 从 DDStats 查找玩家
+
+[Chatbinds]
+Backup profile after copy
+== 复制后备份配置
+
+Reset Find/Copy Skin Chatbinds
+== 重置“查找/复制皮肤”聊天绑定
+
+Auto change clan when dummy connect
+== 假人连接时自动切换战队
+
+Clan with dummy:
+== 带假人时的战队：
+
+Clan without dummy:
+== 无假人时的战队：
+
+Chat Functions
+== 聊天功能
+
+[Chatbinds]
+Find hours
+== 查找时长
+
+Add a word to the censor list
+== 添加屏蔽词
+
+Find time on other map
+== 查询其他地图成绩
+
+Search map info
+== 搜索地图信息
+
+Reset Chat Chatbinds
+== 重置聊天功能绑定
+
+Show blocked word in console
+== 在控制台显示被屏蔽词
+
+Blocked words console color
+== 被屏蔽词控制台颜色
+
+Enable word block list
+== 启用屏蔽词列表
+
+Animate chat
+== 聊天动画
+
+Anim chat ms
+== 动画时长（毫秒）
+
+Movement
+== 移动
+
+Scoreboard(Pulse)
+== 记分板（Pulse）
+
+Reset mouse in scoreboard on untab
+== 关闭记分板时重置鼠标
+
+Toggle mouse unlock in scoreboard
+== 记分板鼠标解锁开关
+
+Player Indicator
+== 玩家指示器
+
+Player indicator transparent toggle
+== 玩家指示器透明开关
+
+Indicator transparent start
+== 透明起始距离
+
+Indicator transparent end
+== 透明结束距离
+
+Indicator transparent minimum
+== 最小透明度
+
+Changed Tater
+== 修改版 TClient
+
+Pos x of Frozen hud
+== 冻结 HUD 的 X 坐标
+
+Hide your chat bubble(without rcon)
+== 隐藏自己的聊天泡泡（无需 rcon）
+
+Tracker Player
+== 玩家追踪
+
+Tracker player
+== 添加追踪玩家
+
+Tracker player reset
+== 重置追踪列表
+
+Tracker player remove
+== 移除追踪玩家
+
+Reset Tracker Chatbinds
+== 重置追踪绑定
+
+Show last known pos instead no info
+== 用最后已知位置代替“无信息”
+
+Change target pos x color when x target = x player
+== 追踪目标与玩家同 X 时变色
+
+Change player pos x color when x target = x player
+== 玩家与追踪目标同 X 时变色
+
+Add Hud Functions
+== 附加 HUD 功能
+
+Friend heart size
+== 好友爱心大小
+
+Friend heart position
+== 好友爱心位置
+
+Show milliseconds in timer
+== 计时器显示毫秒
+
+Show sleep emote in menu (ONLY CLIENT OTHER DON'T SEE THAT)
+== 在菜单显示睡觉表情（仅自己可见）
+
+Show afk texture instead emote
+== 显示 AFK 纹理而非表情
+
+Show sleep emote in spec (ONLY CLIENT OTHER DON'T SEE THAT)
+== 在观战显示睡觉表情（仅自己可见）
+
+Show spec texture instead emote
+== 显示观战纹理而非表情
+
+Controls
+== 控制
+
+Toggle 45 degrees
+== 45° 开关
+
+Toggle small sens
+== 低灵敏度开关
+
+Laser Settings(Pulse)
+== 激光设置（Pulse）
+
+Enhanced Laser Effects
+== 强化激光特效
+
+Laser Glow Intensity
+== 激光光晕强度
+
+Laser Preview
+== 激光预览
+
+Spectator
+== 观战者
+
+Chat Bubbles(E-Client)
+== 聊天泡泡（E-Client）
+
+Show Chatbubbles above players
+== 在玩家头顶显示聊天泡泡
+
+Chat Bubble Size
+== 聊天泡泡大小
+
+Show the Bubbles for
+== 泡泡显示时长
+
+fade in for
+== 淡入时间
+
+fade out for
+== 淡出时间
+
+Discord RPC(E-Client)
+== Discord 状态（E-Client）
+
+Use Discord Rich Presence
+== 启用 Discord Rich Presence
+
+Show What Map you're on
+== 显示当前地图
+
+Online Message:
+== 在线消息：
+
+Offline Message:
+== 离线消息：
+
+Multiple replacement char on blocked word len
+== 按屏蔽词长度重复替换字符
+
+Replacement char
+== 替换字符
+
+p=ping i=ignore m=ID n=name c=clan d=direction f=friend h=hook r=reason s=skin H=HookName F=FireName l=newline
+== p=ping i=忽略 m=ID n=名字 c=战队 d=方向 f=好友 h=钩子 r=原因 s=皮肤 H=钩子名 F=锤子名 l=换行
+
+[Nameplate_Editor]
+Nick
+== 昵称
+
+[Nameplate_Editor]
+Ignore
+== 忽略
+
+[Nameplate_Editor]
+Skin
+== 皮肤
+
+[Nameplate_Editor]
+Dir
+== 方向
+
+[Nameplate_Editor]
+Friend
+== 好友
+
+Nameplate Scheme
+== 名牌方案
+
+Current scheme:
+== 当前方案：
+
+Preview:
+== 预览：
+
+Nameplate editor
+== 名牌编辑器
+
+Show dummy
+== 显示假人
+
+Reset to default
+== 恢复默认
+
+Clear all
+== 全部清空
+
+[Nameplate_Editor]
+HookName
+== 钩子名牌
+
+[Nameplate_Editor]
+FireName
+== 锤子名牌
+
+Show you' fire presses
+== 显示自己锤子蓄力
+
+[Show players' key presses]
+Dummy
+== 假人
+
+[Show players' key presses]
+Both
+== 全部
+
+[Show players' key presses RC]
+Own
+== 自己
+
+Size of fire press icons
+== 锤子蓄力图标大小
+
+Show players' hook presses
+== 显示玩家钩子蓄力
+
+Size of hook press icons
+== 钩子蓄力图标大小
+
+Hook will change pos when some nearby
+== 钩子图标重叠时自动错位
+
+Fire will change pos when some nearby
+== 锤子图标重叠时自动错位
+
+if you move away from the tee, the indicator will become more transparent
+== 远离玩家时指示器变透明
+
+if no will be 'badbad->*' if yes 'badbad->******'
+== 否：badbad->*　是：badbad->******
+
+Replacing blocked word with replacement char(badbad->******)
+== 用替换字符覆盖屏蔽词（badbad->******）
+
+In console will be like 'tee said badbad'
+== 控制台显示：tee said badbad
+
+[RClient]
+Nameplates
+== 名牌
+
+Show Chatbubbles above you
+== 在自己头顶显示聊天泡泡
+
+Show Chatbubbles in demo
+== 在录像中显示聊天泡泡
+
+Show RClient User indicator
+== 显示 RClient 用户标识
+
+Size of Rclient indicator icons
+== RClient 标识大小
+
+Indicator will change pos when some nearby
+== 标识重叠时自动错位
+
+Show indicator above you
+== 在自己头顶显示标识
+
+RClient User Indicator
+== RClient 用户标识
+
+[RClient]
+Dummy
+== 假人
+
+Show Advanced Dummy Actions
+== 显示高级假人操作
+
+Show Dummy position
+== 显示假人位置
+
+Change dummy pos x color when x dummy = x player
+== 假人与玩家同 X 时变色
+
+Change player pos x color when x dummy = x player
+== 玩家与假人同 X 时变色
+
+Edge Info
+== 边缘信息
+
+Show edge info about freeze
+== 显示冻结边缘信息
+
+Show edge info about jumps
+== 显示跳跃边缘信息
+
+Color when over freeze
+== 冻结上方颜色
+
+Color when over kill
+== 致死上方颜色
+
+Color when falling safely
+== 安全掉落颜色
+
+Show edge info
+== 显示边缘信息
+
+Edge info pos x
+== 边缘信息 X 坐标
+
+Edge info pos y
+== 边缘信息 Y 坐标
+
+Only empty servers
+== 仅空服务器
+
+Change whole word (else use regex)
+== 整词匹配（否则用正则）
+
+[Rclientfilter]
+Replace word with:
+== 替换为：
+
+[Rclientfilter]
+Full
+== 完全
+
+[Rclientfilter]
+Both
+== 两者
+
+Move up
+== 上移
+
+Move down
+== 下移
+
+Enable spectator camera move
+== 启用观战摄像机移动
+
+Speed of camera
+== 摄像机速度
