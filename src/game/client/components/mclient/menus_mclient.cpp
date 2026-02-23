@@ -219,7 +219,7 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
             });
             if(g_Config.m_McRainbowTeeBody) {
                 DoSubOption(pCol, [&](CUIRect* pRect) {
-                    Ui()->DoScrollbarOption(&g_Config.m_McRainbowTeeBodySpeed, &g_Config.m_McRainbowTeeBodySpeed, pRect, MCLocalize("速度"), 0, 100);
+                    Ui()->DoScrollbarOption(&g_Config.m_McRainbowTeeBodySpeed, &g_Config.m_McRainbowTeeBodySpeed, pRect, MCLocalize("速度"), 0, 1000);
                 });
             }
             DoSubOption(pCol, [&](CUIRect* pRect) {
@@ -227,7 +227,7 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
             });
             if(g_Config.m_McRainbowTeeFeet) {
                 DoSubOption(pCol, [&](CUIRect* pRect) {
-                    Ui()->DoScrollbarOption(&g_Config.m_McRainbowTeeFeetSpeed, &g_Config.m_McRainbowTeeFeetSpeed, pRect, MCLocalize("速度"), 0, 100);
+                    Ui()->DoScrollbarOption(&g_Config.m_McRainbowTeeFeetSpeed, &g_Config.m_McRainbowTeeFeetSpeed, pRect, MCLocalize("速度"), 0, 1000);
                 });
             }
         }

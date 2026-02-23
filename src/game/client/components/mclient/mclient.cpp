@@ -11,6 +11,7 @@ CMClient::CMClient()
 	m_LastRotateTime = 0.0f;
 	m_LastCloneTick = 0;
 	m_LastClonedClientId = -1;
+	m_RainbowDelay = 0;
 }
 
 void CMClient::OnInit()
@@ -27,6 +28,9 @@ void CMClient::OnRender()
 {
 	// 检查克隆人皮肤复制功能
 	CheckCloneSkin();
+
+	// 更新彩虹Tee颜色
+	UpdateRainbow();
 
 	if(!g_Config.m_McRandomSkinRotate || Client()->State() != IClient::STATE_ONLINE)
 		return;
@@ -201,4 +205,64 @@ void CMClient::CheckCloneSkin()
 		}
 		m_LastClonedClientId = TargetId;
 	}
+}
+
+void CMClient::UpdateRainbow()
+{
+    if(!g_Config.m_McRainbowTee)
+		return;
+
+    // 从原本的颜色中提取饱和度和明度
+    int OriginalBodyColor = g_Config.m_ClPlayerColorBody;
+    float BodySat = ((OriginalBodyColor >> 8) & 0xFF) / 255.0f;
+    float BodyLht = (OriginalBodyColor & 0xFF) / 255.0f;
+
+    int OriginalFeetColor = g_Config.m_ClPlayerColorFeet;
+    float FeetSat = ((OriginalFeetColor >> 8) & 0xFF) / 255.0f;
+    float FeetLht = (OriginalFeetColor & 0xFF) / 255.0f;
+
+    static float BodyHue = 0.0f;
+    static float FeetHue = 0.0f;
+    
+    // 更新身体色相
+    if(g_Config.m_McRainbowTeeBody)
+    {
+        float BodySpeed = g_Config.m_McRainbowTeeBodySpeed * Client()->FrameTimeAverage() * 0.01f;
+        BodyHue += BodySpeed;
+        if(BodyHue > 1.0f) BodyHue -= 1.0f;
+    }
+    
+    // 更新脚部色相
+    if(g_Config.m_McRainbowTeeFeet)
+    {
+        float FeetSpeed = g_Config.m_McRainbowTeeFeetSpeed * Client()->FrameTimeAverage() * 0.01f;
+        FeetHue += FeetSpeed;
+        if(FeetHue > 1.0f) FeetHue -= 1.0f;
+    }
+
+    if(g_Config.m_McRainbowTeeBody)
+    {
+        int BodyRainbowColor = getIntFromColor(BodyHue, BodySat, BodyLht);
+        g_Config.m_ClPlayerColorBody = BodyRainbowColor;
+        g_Config.m_ClDummyColorBody = BodyRainbowColor;
+    }
+
+    if(g_Config.m_McRainbowTeeFeet)
+    {
+        int FeetRainbowColor = getIntFromColor(FeetHue, FeetSat, FeetLht);
+        g_Config.m_ClPlayerColorFeet = FeetRainbowColor;
+        g_Config.m_ClDummyColorFeet = FeetRainbowColor;
+    }
+
+    if(Client()->State() == IClient::STATE_ONLINE)
+    {
+        if(m_RainbowDelay < time_get())
+        {
+			if(g_Config.m_ClPlayerUseCustomColor)
+            	GameClient()->SendInfo(false);	
+        	if(g_Config.m_ClDummyUseCustomColor)
+            	GameClient()->SendDummyInfo(false);
+            m_RainbowDelay = time_get() + time_freq() * g_Config.m_SvInfoChangeDelay;
+        }
+    }
 }
