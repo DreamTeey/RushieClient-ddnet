@@ -16,7 +16,18 @@ public:
 
 	// 克隆人皮肤复制方法
 	void CheckCloneSkin();
-
+	void UpdateRainbow();	
+	// 颜色转换函数
+	int getIntFromColor(float Hue, float Sat, float LhT)
+	{
+		int R = round(255 * Hue);
+		int G = round(255 * Sat);
+		int B = round(255 * LhT);
+		R = (R << 16) & 0x00FF0000;
+		G = (G << 8) & 0x0000FF00;
+		B = B & 0x000000FF;
+		return 0xFF000000 | R | G | B;
+	}
 private:
 	// 逻辑计时器
 	float m_LastRotateTime;
@@ -26,6 +37,9 @@ private:
 
 	// 最后复制的玩家ID
 	int m_LastClonedClientId;
+	int64_t m_RainbowDelay;
+
+
 };
 
 #endif
