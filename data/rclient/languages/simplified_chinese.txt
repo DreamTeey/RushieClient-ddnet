@@ -44,7 +44,7 @@ playernickname to enter nickname
 == 输入玩家昵称
 
 Do "playernickname" yourself in u need
-== 需要时手动输入“playernickname”
+== 需要时手动输入"playernickname"
 
 playerid to enter id
 == 输入玩家ID
@@ -142,7 +142,7 @@ Backup profile after copy
 == 复制后备份配置
 
 Reset Find/Copy Skin Chatbinds
-== 重置“查找/复制皮肤”聊天绑定
+== 重置"查找/复制皮肤"聊天绑定
 
 Auto change clan when dummy connect
 == 假人连接时自动切换战队
@@ -239,7 +239,7 @@ Reset Tracker Chatbinds
 == 重置追踪绑定
 
 Show last known pos instead no info
-== 用最后已知位置代替“无信息”
+== 用最后已知位置代替"无信息"
 
 Change target pos x color when x target = x player
 == 追踪目标与玩家同 X 时变色
@@ -420,7 +420,7 @@ if you move away from the tee, the indicator will become more transparent
 == 远离玩家时指示器变透明
 
 if no will be 'badbad->*' if yes 'badbad->******'
-== 否：badbad->*　是：badbad->******
+== 否：badbad->* 是：badbad->******
 
 Replacing blocked word with replacement char(badbad->******)
 == 用替换字符覆盖屏蔽词（badbad->******）
@@ -525,3 +525,194 @@ Enable spectator camera move
 
 Speed of camera
 == 摄像机速度
+
+[ScoreboardSorting]
+Sort by id:
+== 按ID排序：
+
+[ScoreboardSorting]
+Default
+== 默认
+
+[ScoreboardSorting]
+Teams
+== 队伍
+
+[ScoreboardSorting]
+All
+== 全部
+
+Show friend icon in scoreboard
+== 在记分板显示好友图标
+
+Always show quick actions
+== 始终显示快速操作
+
+Show sparkle trail
+== 显示闪光轨迹
+
+Show frozen flakes in freeze
+== 在冻结中显示雪花
+
+Partial Replacement char
+== 部分替换字符
+
+Voice mix
+== 语音混合
+
+Volume
+== 音量
+
+No active players
+== 无活跃玩家
+
+Block list
+== 屏蔽列表
+
+Chat
+== 聊天
+
+Scoreboard
+== 记分板
+
+No colored frozen tee skins for yourself
+== 自己不显示彩色冻结皮肤
+
+Effects
+== 特效
+
+Hud
+== HUD
+
+Move left
+== 左移
+
+Move right
+== 右移
+
+Find teleport
+== 查找传送点
+
+Voice
+== 语音
+
+Enable voice chat
+== 启用语音聊天
+
+Ignore distance
+== 忽略距离
+
+Stereo output (pan left/right)
+== 立体声输出（左/右声像）
+
+Voice filter (HPF+compressor+limiter)
+== 语音滤镜（高通滤波+压缩器+限幅器）
+
+Filter presets
+== 滤镜预设
+
+Soft
+== 柔和
+
+Balanced
+== 平衡
+
+Strong
+== 强烈
+
+Show advanced filter settings
+== 显示高级滤镜设置
+
+Comp threshold (%)
+== 压缩阈值（%）
+
+Comp ratio (x0.1)
+== 压缩比（x0.1）
+
+Comp attack (ms)
+== 压缩启动时间（毫秒）
+
+Comp release (ms)
+== 压缩释放时间（毫秒）
+
+Comp makeup (%)
+== 压缩补偿增益（%）
+
+Limiter (%)
+== 限幅器（%）
+
+Show voice indicator
+== 显示语音指示器
+
+Voice radius (tiles)
+== 语音半径（格）
+
+Voice volume
+== 语音音量
+
+Name volume
+== 按名称设置音量
+
+Nickname
+== 昵称
+
+Name volume (%)
+== 按名称音量（%）
+
+Set volume
+== 设置音量
+
+Remove volume
+== 移除音量
+
+Example: Name=80,Other=120
+== 示例：Name=80,Other=120
+
+Name volume list empty
+== 按名称音量列表为空
+
+Input device
+== 输入设备
+
+Output device
+== 输出设备
+
+Use ri_voice_list_devices in console
+== 在控制台使用 ri_voice_list_devices
+
+Voice PTT
+== 语音按键通话
+
+[VoiceChat]
+Block people with:
+== 屏蔽人员：
+
+[VoiceChat]
+None
+== 无
+
+[VoiceChat]
+Whitelist
+== 白名单
+
+[VoiceChat]
+Blacklist
+== 黑名单
+
+Reset Voice Chatbinds
+== 重置语音聊天绑定
+
+Admin Panel
+== 管理面板
+
+Adminpanel
+== 管理面板
+
+Plays sound at exec command
+== 执行命令时播放声音
+
+The command is ran in console not chat
+== 命令在控制台运行而非聊天
+
+Show when microphone active
+== 麦克风激活时显示
