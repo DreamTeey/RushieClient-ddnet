@@ -29,6 +29,14 @@ void CRClient::OnInit()
 	m_Voice.Init(GameClient(), Client(), Console());
 }
 
+void CRClient::OnShutdown()
+{
+	if(m_45degreesEnabled || m_SmallsensEnabled)
+		g_Config.m_InpMousesens = m_45degreesDistanceOld == 0 ? m_45degreesDistanceOld : m_SmallsensOld;
+	if(m_45degreesEnabled)
+		g_Config.m_ClMouseMaxDistance = m_45degreesDistanceOld;
+}
+
 void CRClient::OnConsoleInit()
 {
 	Console()->Register("ri_find_player_from_ddstats", "s[type]", CFGFLAG_CLIENT, ConFindPlayerFromDdstats, this, "Fetch player from DDstats");
@@ -68,6 +76,7 @@ void CRClient::OnConsoleInit()
 	Console()->Register("ri_voice_list_volumes", "", CFGFLAG_CLIENT, ConVoiceListVolumes, this, "List per-name voice volumes");
 	Console()->Register("ri_voice_mute_add", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteAdd, this, "Add player to voice mute list");
 	Console()->Register("ri_voice_mute_remove", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteRemove, this, "Remove player from voice mute list");
+	Console()->Register("ri_get_checkpoint_id", "", CFGFLAG_CLIENT, ConGetCheckpointId, this, "Get id of checkpoint (write id or nickname player)");
 	Console()->Chain(
 		"ri_regex_player_whitelist", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
 			if(pResult->NumArguments() == 1)
@@ -829,8 +838,8 @@ void CRClient::ConToggle45Degrees(IConsole::IResult *pResult, void *pUserData)
 		{
 			pSelf->GameClient()->Echo("[[green]] 45° on");
 			pSelf->m_45degreesEnabled = 1;
-			g_Config.m_RiPrevInpMousesens45degrees = (pSelf->m_SmallsensEnabled == 1 ? g_Config.m_RiPrevInpMousesensSmallsens : g_Config.m_InpMousesens);
-			g_Config.m_RiPrevMouseMaxDistance45degrees = g_Config.m_ClMouseMaxDistance;
+			pSelf->m_45degreesSensOld = (pSelf->m_SmallsensEnabled == 1 ? pSelf->m_SmallsensOld : g_Config.m_InpMousesens);
+			pSelf->m_45degreesDistanceOld = g_Config.m_ClMouseMaxDistance;
 			g_Config.m_ClMouseMaxDistance = 2;
 			g_Config.m_InpMousesens = 4;
 		}
@@ -838,8 +847,8 @@ void CRClient::ConToggle45Degrees(IConsole::IResult *pResult, void *pUserData)
 		{
 			pSelf->m_45degreesEnabled = 0;
 			pSelf->GameClient()->Echo("[[red]] 45° off");
-			g_Config.m_ClMouseMaxDistance = g_Config.m_RiPrevMouseMaxDistance45degrees;
-			g_Config.m_InpMousesens = g_Config.m_RiPrevInpMousesens45degrees;
+			g_Config.m_ClMouseMaxDistance = pSelf->m_45degreesDistanceOld;
+			g_Config.m_InpMousesens = pSelf->m_45degreesSensOld;
 		}
 		pSelf->m_45degreestogglelastinput = pSelf->m_45degreestoggle;
 	}
@@ -852,15 +861,15 @@ void CRClient::ConToggle45Degrees(IConsole::IResult *pResult, void *pUserData)
 			{
 				pSelf->m_45degreesEnabled = 0;
 				pSelf->GameClient()->Echo("[[red]] 45° off");
-				g_Config.m_ClMouseMaxDistance = g_Config.m_RiPrevMouseMaxDistance45degrees;
-				g_Config.m_InpMousesens = g_Config.m_RiPrevInpMousesens45degrees;
+				g_Config.m_ClMouseMaxDistance = pSelf->m_45degreesDistanceOld;
+				g_Config.m_InpMousesens = pSelf->m_45degreesSensOld;
 			}
 			else
 			{
 				pSelf->m_45degreesEnabled = 1;
 				pSelf->GameClient()->Echo("[[green]] 45° on");
-				g_Config.m_RiPrevInpMousesens45degrees = (pSelf->m_SmallsensEnabled == 1 ? g_Config.m_RiPrevInpMousesensSmallsens : g_Config.m_InpMousesens);
-				g_Config.m_RiPrevMouseMaxDistance45degrees = g_Config.m_ClMouseMaxDistance;
+				pSelf->m_45degreesSensOld = (pSelf->m_SmallsensEnabled == 1 ? pSelf->m_SmallsensOld : g_Config.m_InpMousesens);
+				pSelf->m_45degreesDistanceOld = g_Config.m_ClMouseMaxDistance;
 				g_Config.m_ClMouseMaxDistance = 2;
 				g_Config.m_InpMousesens = 4;
 			}
@@ -879,14 +888,14 @@ void CRClient::ConToggleSmallSens(IConsole::IResult *pResult, void *pUserData)
 		{
 			pSelf->m_SmallsensEnabled = 1;
 			pSelf->GameClient()->Echo("[[green]] small sens on");
-			g_Config.m_RiPrevInpMousesensSmallsens = (pSelf->m_45degreesEnabled == 1 ? g_Config.m_RiPrevInpMousesens45degrees : g_Config.m_InpMousesens);
+			pSelf->m_SmallsensOld = (pSelf->m_45degreesEnabled == 1 ? pSelf->m_45degreesSensOld : g_Config.m_InpMousesens);
 			g_Config.m_InpMousesens = 1;
 		}
 		else if(!pSelf->m_Smallsenstoggle)
 		{
 			pSelf->m_SmallsensEnabled = 0;
 			pSelf->GameClient()->Echo("[[red]] small sens off");
-			g_Config.m_InpMousesens = g_Config.m_RiPrevInpMousesensSmallsens;
+			g_Config.m_InpMousesens = pSelf->m_SmallsensOld;
 		}
 		pSelf->m_Smallsenstogglelastinput = pSelf->m_Smallsenstoggle;
 	}
@@ -899,13 +908,13 @@ void CRClient::ConToggleSmallSens(IConsole::IResult *pResult, void *pUserData)
 			{
 				pSelf->m_SmallsensEnabled = 0;
 				pSelf->GameClient()->Echo("[[red]] small sens off");
-				g_Config.m_InpMousesens = g_Config.m_RiPrevInpMousesensSmallsens;
+				g_Config.m_InpMousesens = pSelf->m_SmallsensOld;
 			}
 			else
 			{
 				pSelf->m_SmallsensEnabled = 1;
 				pSelf->GameClient()->Echo("[[green]] small sens on");
-				g_Config.m_RiPrevInpMousesensSmallsens = (pSelf->m_45degreesEnabled == 1 ? g_Config.m_RiPrevInpMousesens45degrees : g_Config.m_InpMousesens);
+				pSelf->m_SmallsensOld = (pSelf->m_45degreesEnabled == 1 ? pSelf->m_45degreesSensOld : g_Config.m_InpMousesens);
 				g_Config.m_InpMousesens = 1;
 			}
 		}
@@ -1274,7 +1283,6 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 	str_copy(aInput, pInput, sizeof(aInput));
 	str_utf8_trim_right(aInput);
 	int ClientID = -1;
-	// First try to find by name
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(str_comp_nocase(pSelf->GameClient()->m_aClients[i].m_aName, aInput) == 0)
@@ -1284,13 +1292,11 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 		}
 	}
 
-	// If not found by name, try to use input as ID
 	if(ClientID == -1)
 	{
 		ClientID = str_toint(aInput);
 	}
 
-	// Validate client ID
 	if(ClientID >= 0 && ClientID < MAX_CLIENTS)
 	{
 		const CGameClient::CClientData &ClientData = pSelf->GameClient()->m_aClients[ClientID];
@@ -1352,6 +1358,40 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 	{
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "Invalid client ID");
 		pSelf->GameClient()->Echo("No that player on server");
+	}
+}
+
+void CRClient::ConGetCheckpointId(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = (CRClient *)pUserData;
+	int PlayerId = -1;
+	if(pSelf->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW && pSelf->GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		const auto &Player = pSelf->GameClient()->m_aClients[pSelf->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId];
+		PlayerId = Player.ClientId();
+	}
+	else if(!pSelf->GameClient()->m_Snap.m_SpecInfo.m_Active)
+		PlayerId = pSelf->GameClient()->m_Snap.m_LocalClientId;
+	else
+		pSelf->GameClient()->Echo("Spec for player or unspec");
+
+	if(PlayerId != -1)
+	{
+		const auto &Char = pSelf->GameClient()->m_Snap.m_aCharacters[PlayerId];
+		if(!Char.m_Active || !Char.m_HasExtendedData)
+		{
+			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "No checkpoint data for this client");
+			return;
+		}
+		const int TeleCheckpoint = Char.m_ExtendedData.m_TeleCheckpoint;
+		const char *pName = pSelf->GameClient()->m_aClients[PlayerId].m_aName;
+		char aBuf[128];
+		if(pName[0] != '\0')
+			str_format(aBuf, sizeof(aBuf), "Tele checkpoint of %s (%d): %d", pName, PlayerId, TeleCheckpoint);
+		else
+			str_format(aBuf, sizeof(aBuf), "Tele checkpoint of client %d: %d", PlayerId, TeleCheckpoint);
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+		pSelf->GameClient()->Echo(aBuf);
 	}
 }
 
@@ -2120,6 +2160,74 @@ float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int Cli
 bool CRClient::IsVoiceActive(int ClientId) const
 {
 	return m_Voice.IsVoiceActive(ClientId);
+}
+
+int CRClient::VoiceNameVolume(const char *pName, int DefaultPercent) const
+{
+	char aNeedle[MAX_NAME_LENGTH];
+	if(!VoiceListTrimName(pName, aNeedle, sizeof(aNeedle)))
+		return std::clamp(DefaultPercent, 0, 200);
+
+	const char *p = g_Config.m_RiVoiceNameVolumes;
+	while(*p)
+	{
+		while(*p == ',' || std::isspace((unsigned char)*p))
+			p++;
+		if(*p == '\0')
+			break;
+
+		const char *pStart = p;
+		while(*p && *p != ',')
+			p++;
+		const char *pEnd = p;
+		while(pEnd > pStart && std::isspace((unsigned char)pEnd[-1]))
+			pEnd--;
+		while(pStart < pEnd && std::isspace((unsigned char)*pStart))
+			pStart++;
+
+		const int Len = (int)(pEnd - pStart);
+		if(Len <= 0)
+			continue;
+
+		char aToken[128];
+		str_truncate(aToken, sizeof(aToken), pStart, Len);
+
+		const char *pEq = str_find(aToken, "=");
+		if(!pEq)
+			continue;
+
+		const int EqIndex = (int)(pEq - aToken);
+		aToken[EqIndex] = '\0';
+		char aName[MAX_NAME_LENGTH];
+		if(!VoiceListTrimName(aToken, aName, sizeof(aName)))
+			continue;
+		if(str_comp_nocase(aName, aNeedle) != 0)
+			continue;
+
+		int Percent = str_toint(aToken + EqIndex + 1);
+		return std::clamp(Percent, 0, 200);
+	}
+
+	return std::clamp(DefaultPercent, 0, 200);
+}
+
+void CRClient::VoiceNameVolumeSet(const char *pName, int Percent)
+{
+	char aName[MAX_NAME_LENGTH];
+	if(!VoiceListTrimName(pName, aName, sizeof(aName)))
+		return;
+
+	Percent = std::clamp(Percent, 0, 200);
+	RemoveVoiceNameVolume(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), aName);
+
+	char aItem[128];
+	str_format(aItem, sizeof(aItem), "%s=%d", aName, Percent);
+	AppendListItem(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), aItem);
+}
+
+void CRClient::VoiceNameVolumeClear(const char *pName)
+{
+	RemoveVoiceNameVolume(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), pName);
 }
 
 const CNetObj_PlayerInfo *CRClient::GetSortingScoreSpec(int SwitchNum, int ClientId)

@@ -569,6 +569,8 @@ void CPlayerMenu::RenderPlayerMenuPopUpPlayerInfo(CUIRect *pBase)
 		m_FindHoursRequestedPlayerId = m_Popup.m_PlayerId;
 	}
 
+	static int s_VoiceVolumeDragPlayerId = -1;
+
 	char aBuf[128];
 	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Row, pBase);
 	if(HasFindHoursResult)
@@ -600,6 +602,123 @@ void CPlayerMenu::RenderPlayerMenuPopUpPlayerInfo(CUIRect *pBase)
 	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Row, pBase);
 	str_format(aBuf, sizeof(aBuf), "Clan: %s", Client.m_aClan[0] ? Client.m_aClan : "-");
 	Ui()->DoLabel(&Row, aBuf, SAdminPanelProperties::ms_FontSize, TEXTALIGN_ML);
+
+	const CNetObj_PlayerInfo *pPingInfo = pPlayerInfo;
+	if(!pPingInfo)
+	{
+		for(const CNetObj_PlayerInfo *pInfo : GameClient()->m_Snap.m_apInfoByScore)
+		{
+			if(pInfo && pInfo->m_ClientId == m_Popup.m_PlayerId)
+			{
+				pPingInfo = pInfo;
+				break;
+			}
+		}
+	}
+	static int s_aCachedPing[MAX_CLIENTS];
+	static bool s_CachedPingInit = false;
+	if(!s_CachedPingInit)
+	{
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+			s_aCachedPing[i] = -1;
+		s_CachedPingInit = true;
+	}
+	if(pPingInfo)
+		s_aCachedPing[m_Popup.m_PlayerId] = std::clamp(pPingInfo->m_Latency, 0, 999);
+	const int Ping = pPingInfo ? std::clamp(pPingInfo->m_Latency, 0, 999) : s_aCachedPing[m_Popup.m_PlayerId];
+	pBase->HSplitTop(SAdminPanelProperties::ms_ItemSpacing, nullptr, pBase);
+	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Row, pBase);
+	if(Ping >= 0)
+		str_format(aBuf, sizeof(aBuf), "Ping: %d", Ping);
+	else
+		str_copy(aBuf, "Ping: unknown", sizeof(aBuf));
+	Ui()->DoLabel(&Row, aBuf, SAdminPanelProperties::ms_FontSize, TEXTALIGN_ML);
+
+	pBase->HSplitTop(SAdminPanelProperties::ms_ItemSpacing, nullptr, pBase);
+	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Row, pBase);
+	{
+		CUIRect CountryText, FlagArea, FlagRect;
+		const float FlagWidth = Row.h * 1.6f;
+		Row.VSplitRight(FlagWidth + 2.0f, &CountryText, &FlagArea);
+		FlagArea.VSplitLeft(2.0f, nullptr, &FlagRect);
+		str_format(aBuf, sizeof(aBuf), "Country: %d", Client.m_Country);
+		Ui()->DoLabel(&CountryText, aBuf, SAdminPanelProperties::ms_FontSize, TEXTALIGN_ML);
+		GameClient()->m_CountryFlags.Render(Client.m_Country, ColorRGBA(1.0f, 1.0f, 1.0f, 0.75f), FlagRect.x, FlagRect.y + 1.0f, FlagRect.w, FlagRect.h - 2.0f);
+	}
+
+	pBase->HSplitTop(SAdminPanelProperties::ms_GroupSpacing, nullptr, pBase);
+	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Label, pBase);
+	Ui()->DoLabel(&Label, Localize("Voice"), SAdminPanelProperties::ms_FontSize, TEXTALIGN_MC);
+
+	const bool VoiceActive = GameClient()->m_RClient.IsVoiceActive(m_Popup.m_PlayerId);
+	const bool VoiceMuted = CRClient::VoiceListHasName(g_Config.m_RiVoiceMute, Client.m_aName);
+
+	pBase->HSplitTop(SAdminPanelProperties::ms_ItemSpacing, nullptr, pBase);
+	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Row, pBase);
+	str_format(aBuf, sizeof(aBuf), "Speaking: %s", VoiceActive ? "Yes" : "No");
+	Ui()->DoLabel(&Row, aBuf, SAdminPanelProperties::ms_FontSize, TEXTALIGN_ML);
+
+	pBase->HSplitTop(SAdminPanelProperties::ms_ItemSpacing, nullptr, pBase);
+	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Row, pBase);
+	{
+		const bool IsHovered = Hovered(&Row);
+		ColorRGBA ButtonColor = VoiceMuted ? ColorRGBA(0.52f, 0.24f, 0.24f, 0.8f) : ColorRGBA(0.24f, 0.42f, 0.24f, 0.8f);
+		if(IsHovered)
+			ButtonColor = ColorRGBA(std::clamp(ButtonColor.r + 0.08f, 0.0f, 1.0f), std::clamp(ButtonColor.g + 0.08f, 0.0f, 1.0f), std::clamp(ButtonColor.b + 0.08f, 0.0f, 1.0f), 0.85f);
+		Row.Draw(ButtonColor, IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
+		Ui()->DoLabel(&Row, VoiceMuted ? Localize("Unmute Voice") : Localize("Mute Voice"), SAdminPanelProperties::ms_FontSize, TEXTALIGN_MC);
+		if(DoButtonLogic(&Row))
+		{
+			if(VoiceMuted)
+				CRClient::VoiceListRemoveName(g_Config.m_RiVoiceMute, sizeof(g_Config.m_RiVoiceMute), Client.m_aName);
+			else
+				CRClient::VoiceListAddName(g_Config.m_RiVoiceMute, sizeof(g_Config.m_RiVoiceMute), Client.m_aName);
+		}
+	}
+
+	pBase->HSplitTop(SAdminPanelProperties::ms_ItemSpacing, nullptr, pBase);
+	pBase->HSplitTop(SAdminPanelProperties::ms_ButtonHeight, &Row, pBase);
+	{
+		const int CurrentVolume = GameClient()->m_RClient.VoiceNameVolume(Client.m_aName, 100);
+		CUIRect VolumeLabel, Slider;
+		Row.VSplitLeft(56.0f, &VolumeLabel, &Slider);
+		str_format(aBuf, sizeof(aBuf), "Vol: %d%%", CurrentVolume);
+		Ui()->DoLabel(&VolumeLabel, aBuf, SAdminPanelProperties::ms_FontSize, TEXTALIGN_ML);
+
+		// Custom slider for this menu (uses unlocked spectator cursor, not Ui()->DoScrollbarH).
+		const bool SliderHovered = Hovered(&Slider);
+		if(m_Mouse.m_Clicked && SliderHovered)
+			s_VoiceVolumeDragPlayerId = m_Popup.m_PlayerId;
+		if(!m_Mouse.m_MouseInput && s_VoiceVolumeDragPlayerId == m_Popup.m_PlayerId)
+			s_VoiceVolumeDragPlayerId = -1;
+
+		const float CurrentNorm = CurrentVolume / 200.0f;
+		const bool IsDragging = s_VoiceVolumeDragPlayerId == m_Popup.m_PlayerId;
+		float NewNorm = CurrentNorm;
+		if(IsDragging)
+			NewNorm = std::clamp((m_Mouse.m_Position.x - Slider.x) / std::max(Slider.w, 1.0f), 0.0f, 1.0f);
+
+		Slider.Draw(ColorRGBA(0.2f, 0.2f, 0.2f, 0.8f), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
+		CUIRect Filled = Slider;
+		Filled.w = Slider.w * NewNorm;
+		if(Filled.w > 0.0f)
+			Filled.Draw(ColorRGBA(0.45f, 0.72f, 0.45f, 0.9f), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
+
+		CUIRect Knob = Slider;
+		const float KnobW = 4.0f;
+		Knob.x = Slider.x + Slider.w * NewNorm - KnobW / 2.0f;
+		Knob.w = KnobW;
+		Knob.Draw(ColorRGBA(0.95f, 0.95f, 0.95f, 0.95f), IGraphics::CORNER_ALL, 2.0f);
+
+		const int NewVolume = std::clamp((int)(NewNorm * 200.0f + 0.5f), 0, 200);
+		if(NewVolume != CurrentVolume)
+		{
+			if(NewVolume == 100)
+				GameClient()->m_RClient.VoiceNameVolumeClear(Client.m_aName);
+			else
+				GameClient()->m_RClient.VoiceNameVolumeSet(Client.m_aName, NewVolume);
+		}
+	}
 }
 
 bool CPlayerMenu::IsActive() const

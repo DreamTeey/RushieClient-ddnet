@@ -51,3 +51,15 @@ And to build use guide from ddnet
 * **Tater Client:** https://github.com/sjrc6/TaterClient-ddnet
 * **Entity Client:** https://github.com/qxdFox/Entity-Client-DDNet
 * **Pulse Client:** https://github.com/PulseClient-ddnet/DDNetPulse
+
+---
+
+## Small FAQ
+
+1. **Q:** If findhours or some command with ddstats don't work \
+   **A:** Try write in windows/linux console \
+   ```curl -v 'https://ddstats.tw/player/json?player=Test1Test2'``` \
+   If answer end * Connection #0 to host ddstats.tw left intact
+   {"error":"player not found"}% write in discord bugs
+2. **Q:** Vibecode? \
+   **A:** Yes, client written with ai like for 50% maybe more or less. I write if function is easy or i want to write it yourself too much

@@ -804,6 +804,18 @@ int CGameConsole::CInstance::GetLinesToScroll(int Direction, int LinesToScroll)
 	return LinesToScroll > 0 ? minimum(Amount, LinesToScroll) : Amount;
 }
 
+int CGameConsole::CInstance::TotalBacklogLines()
+{
+	int TotalLines = 0;
+	for(CBacklogEntry *pEntry = m_Backlog.First(); pEntry; pEntry = m_Backlog.Next(pEntry))
+	{
+		if(pEntry->m_LineCount == -1)
+			UpdateEntryTextAttributes(pEntry);
+		TotalLines += pEntry->m_LineCount;
+	}
+	return TotalLines;
+}
+
 void CGameConsole::CInstance::ScrollToCenter(int StartLine, int EndLine)
 {
 	// This method is used to scroll lines from `StartLine` to `EndLine` to the center of the screen, if possible.
@@ -1254,6 +1266,7 @@ void CGameConsole::OnRender()
 				return Input()->NativeMousePos() / WindowSize * ScreenSize;
 			}
 		};
+		const bool WasMouseIsPress = pConsole->m_MouseIsPress;
 		if(!pConsole->m_MouseIsPress && (m_TouchState.m_PrimaryPressed || Input()->NativeMousePressed(1)))
 		{
 			pConsole->m_MouseIsPress = true;
@@ -1267,6 +1280,9 @@ void CGameConsole::OnRender()
 		{
 			pConsole->m_MouseRelease = GetMousePosition();
 		}
+		const bool MousePressedStarted = !WasMouseIsPress && pConsole->m_MouseIsPress;
+		const bool MouseReleased = WasMouseIsPress && !pConsole->m_MouseIsPress;
+		const vec2 MousePos = pConsole->m_MouseIsPress ? pConsole->m_MouseRelease : GetMousePosition();
 		const float ScaledLineHeight = LineHeight / ScreenSize.y;
 		if(absolute(m_TouchState.m_ScrollAmount.y) >= ScaledLineHeight)
 		{
@@ -1429,6 +1445,83 @@ void CGameConsole::OnRender()
 				pConsole->m_NewLineCounter = 0;
 		}
 
+		const int MaxVisibleLines = maximum(1, (int)std::floor((y - RowHeight) / LineHeight));
+		const int TotalLines = pConsole->TotalBacklogLines();
+		const int MaxScrollLine = maximum(0, TotalLines - MaxVisibleLines);
+
+		pConsole->m_BacklogCurLine = std::clamp(pConsole->m_BacklogCurLine, 0, MaxScrollLine);
+
+		const float ScrollbarWidth = 20.0f;
+		const float ScrollbarGap = 4.0f;
+		const bool ShowScrollbar = true;
+		const bool CanScroll = MaxScrollLine > 0;
+		const float LogWidthReduction = ShowScrollbar ? ScrollbarWidth + ScrollbarGap : 0.0f;
+		const float LogTextWidth = Screen.w - 10.0f - LogWidthReduction;
+		const float LogRightEdge = Screen.w - LogWidthReduction;
+
+		if(ShowScrollbar)
+		{
+			const float ScrollbarHeight = maximum(0.0f, y - RowHeight);
+			if(ScrollbarHeight > 0.0f)
+			{
+				CUIRect ScrollbarRect = {Screen.w - ScrollbarWidth - 3.0f, RowHeight + 2.0f, ScrollbarWidth, ScrollbarHeight};
+				CUIRect Rail;
+				ScrollbarRect.Margin(5.0f, &Rail);
+
+				CUIRect Handle;
+				if(CanScroll)
+					Rail.HSplitTop(std::clamp(33.0f, Rail.w, Rail.h / 3.0f), &Handle, nullptr);
+				else
+					Handle = Rail;
+				const float ScrollCurrent = CanScroll ? (1.0f - pConsole->m_BacklogCurLine / (float)MaxScrollLine) : 1.0f;
+				Handle.y = Rail.y + (Rail.h - Handle.h) * ScrollCurrent;
+
+				const bool MouseInRail = MousePos.x >= Rail.x && MousePos.x <= Rail.x + Rail.w && MousePos.y >= Rail.y && MousePos.y <= Rail.y + Rail.h;
+				const bool MouseInHandle = MousePos.x >= Handle.x && MousePos.x <= Handle.x + Handle.w && MousePos.y >= Handle.y && MousePos.y <= Handle.y + Handle.h;
+
+				if(CanScroll && MousePressedStarted)
+				{
+					if(MouseInHandle)
+					{
+						pConsole->m_ScrollbarDragging = true;
+						pConsole->m_ScrollbarDragOffset = MousePos.y - Handle.y;
+					}
+					else if(MouseInRail)
+					{
+						pConsole->m_ScrollbarDragging = true;
+						pConsole->m_ScrollbarDragOffset = Handle.h / 2.0f;
+					}
+				}
+
+				if(MouseReleased || !CanScroll)
+				{
+					pConsole->m_ScrollbarDragging = false;
+				}
+
+				if(pConsole->m_ScrollbarDragging)
+				{
+					const float ScrollRange = maximum(1.0f, Rail.h - Handle.h);
+					const float ScrollPos = std::clamp((MousePos.y - pConsole->m_ScrollbarDragOffset) - Rail.y, 0.0f, ScrollRange);
+					const float ScrollRelative = ScrollPos / ScrollRange;
+					const int NewBacklogCurLine = round_to_int((1.0f - ScrollRelative) * MaxScrollLine);
+					if(NewBacklogCurLine != pConsole->m_BacklogCurLine)
+					{
+						pConsole->m_BacklogCurLine = NewBacklogCurLine;
+						pConsole->m_HasSelection = false;
+					}
+				}
+
+				Rail.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, Rail.w / 2.0f);
+				const bool HighlightHandle = pConsole->m_ScrollbarDragging || MouseInHandle;
+				const ColorRGBA HandleColor = HighlightHandle ? ColorRGBA(0.95f, 0.95f, 0.95f, 0.9f) : ColorRGBA(0.85f, 0.85f, 0.85f, 0.7f);
+				Handle.Draw(HandleColor, IGraphics::CORNER_ALL, Handle.w / 2.0f);
+			}
+		}
+		else
+		{
+			pConsole->m_ScrollbarDragging = false;
+		}
+
 		// render console log (current entry, status, wrap lines)
 		CInstance::CBacklogEntry *pEntry = pConsole->m_Backlog.Last();
 		float OffsetY = 0.0f;
@@ -1448,7 +1541,7 @@ void CGameConsole::OnRender()
 		const float YScale = Graphics()->ScreenHeight() / Screen.h;
 		const float CalcOffsetY = LineHeight * std::floor((y - RowHeight) / LineHeight);
 		const float ClipStartY = (y - CalcOffsetY) * YScale;
-		Graphics()->ClipEnable(0, ClipStartY, Screen.w * XScale, (y + 2.0f) * YScale - ClipStartY);
+		Graphics()->ClipEnable(0, ClipStartY, LogRightEdge * XScale, (y + 2.0f) * YScale - ClipStartY);
 
 		while(pEntry)
 		{
@@ -1492,10 +1585,10 @@ void CGameConsole::OnRender()
 			CTextCursor EntryCursor;
 			EntryCursor.SetPosition(vec2(0.0f, y - OffsetY));
 			EntryCursor.m_FontSize = FONT_SIZE;
-			EntryCursor.m_LineWidth = Screen.w - 10.0f;
+			EntryCursor.m_LineWidth = LogTextWidth;
 			EntryCursor.m_MaxLines = pEntry->m_LineCount;
 			EntryCursor.m_LineSpacing = LINE_SPACING;
-			EntryCursor.m_CalculateSelectionMode = (m_ConsoleState == CONSOLE_OPEN && pConsole->m_MousePress.y < pConsole->m_BoundingBox.m_Y && (pConsole->m_MouseIsPress || (pConsole->m_CurSelStart != pConsole->m_CurSelEnd) || pConsole->m_HasSelection)) ? TEXT_CURSOR_SELECTION_MODE_CALCULATE : TEXT_CURSOR_SELECTION_MODE_NONE;
+			EntryCursor.m_CalculateSelectionMode = (m_ConsoleState == CONSOLE_OPEN && pConsole->m_MousePress.y < pConsole->m_BoundingBox.m_Y && pConsole->m_MousePress.x < LogRightEdge && (pConsole->m_MouseIsPress || (pConsole->m_CurSelStart != pConsole->m_CurSelEnd) || pConsole->m_HasSelection)) ? TEXT_CURSOR_SELECTION_MODE_CALCULATE : TEXT_CURSOR_SELECTION_MODE_NONE;
 			EntryCursor.m_PressMouse = pConsole->m_MousePress;
 			EntryCursor.m_ReleaseMouse = pConsole->m_MouseRelease;
 

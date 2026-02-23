@@ -63,6 +63,9 @@ class CRClient : public CComponent
 	void AppendListItem(char *pList, int ListSize, const char *pItem);
 	CRClientVoice m_Voice;
 
+	//Checkpoint
+	static void ConGetCheckpointId(IConsole::IResult *pResult, void *pUserData);
+
 	bool m_SpecMoveLeft = false;
 	bool m_SpecMoveRight = false;
 	bool m_SpecMoveUp = false;
@@ -73,10 +76,13 @@ class CRClient : public CComponent
 	int m_45degreestoggle = 0;
 	int m_45degreestogglelastinput = 0;
 	int m_45degreesEnabled = 0;
+	int m_45degreesSensOld = 0;
+	int m_45degreesDistanceOld = 0;
 	// Small sens
 	int m_Smallsenstoggle = 0;
 	int m_Smallsenstogglelastinput = 0;
 	int m_SmallsensEnabled = 0;
+	int m_SmallsensOld = 0;
 	//Deepfly
 	char m_Oldmouse1Bind[128];
 
@@ -144,6 +150,7 @@ public:
 	void OnInit() override;
 	void OnConsoleInit() override;
 	void OnRender() override;
+	void OnShutdown() override;
 
 	static constexpr const char *RCLIENT_URL = "https://rushie-client.ru";
 	static constexpr const char *RCLIENT_VERSION_URL = "https://server.rushie-client.ru/version";
@@ -192,6 +199,9 @@ public:
 	static bool VoiceListHasName(const char *pList, const char *pName);
 	static bool VoiceListAddName(char *pList, int ListSize, const char *pName);
 	static bool VoiceListRemoveName(char *pList, int ListSize, const char *pName);
+	int VoiceNameVolume(const char *pName, int DefaultPercent = 100) const;
+	void VoiceNameVolumeSet(const char *pName, int Percent);
+	void VoiceNameVolumeClear(const char *pName);
 };
 
 #endif

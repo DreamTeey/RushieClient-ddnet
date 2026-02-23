@@ -63,10 +63,7 @@ MACRO_CONFIG_INT(RiVoiceDebug, ri_voice_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 MACRO_CONFIG_INT(RiVoiceShowWhenActive, ri_voice_show_when_active, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice chat indicator when active")
 
 //Controls
-MACRO_CONFIG_INT(RiPrevMouseMaxDistance45degrees, ri_prev_mouse_max_distance_45_degrees, 400, 0, 5000, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Previous maximum cursor distance for 45 degrees")
-MACRO_CONFIG_INT(RiPrevInpMousesens45degrees, ri_prev_inp_mousesens_45_degrees, 200, 1, 100000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Previous mouse sensitivity for 45 degrees")
 MACRO_CONFIG_INT(RiToggle45degrees, ri_toggle_45_degrees, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle 45 degrees bind or not")
-MACRO_CONFIG_INT(RiPrevInpMousesensSmallsens, ri_prev_inp_mousesens_small_sens, 200, 1, 100000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Previous mouse sensitivity for small sens")
 MACRO_CONFIG_INT(RiToggleSmallSens, ri_toggle_small_sens, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle small sens bind or not")
 
 //Hud
@@ -98,6 +95,7 @@ MACRO_CONFIG_INT(RiIndicatorTransparentOffsetMax, ri_indicator_transparent_offse
 MACRO_CONFIG_INT(RiIndicatorTransparentToggle, ri_indicator_transparent_toggle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle player indicator transparent")
 MACRO_CONFIG_INT(RiIndicatorTransparentMin, ri_indicator_transparent_min, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Minimal transparent when offset max reached")
 MACRO_CONFIG_INT(RiFrozenHudPosX, ri_frozen_hud_pos_x, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Change frozen hud pos x")
+MACRO_CONFIG_INT(RiFrozenHudWarlistTeamOnly, ri_frozen_hud_warlist_team_only, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frozen HUD only for players in warlist team group")
 MACRO_CONFIG_INT(RiColorFreezeNoYourself, ri_color_freeze_no_yourself, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Don't use color skin in freeze for yourself")
 
 
