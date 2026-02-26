@@ -9,6 +9,8 @@
 
 #include <generated/protocol.h>
 
+#include "engine/font_icons.h"
+
 #include <game/client/components/camera.h>
 #include <game/client/components/chat.h>
 #include <game/client/components/console.h>
@@ -425,18 +427,18 @@ void CPlayerMenu::RenderPlayerMenuPopUpQuickActions(CUIRect *pBase)
 	{
 		CUIRect Row1 = Row;
 		const float ActionWidth = (Row1.w - QuickActionSpacing * 2.0f) / 3.0f;
-		RenderQuickAction(&Row1, ActionWidth, FontIcons::FONT_ICON_HEART, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f), Client.m_Friend, [&]() {
+		RenderQuickAction(&Row1, ActionWidth, FontIcon::HEART, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f), Client.m_Friend, [&]() {
 			if(Client.m_Friend)
 				GameClient()->Friends()->RemoveFriend(Client.m_aName, Client.m_aClan);
 			else
 				GameClient()->Friends()->AddFriend(Client.m_aName, Client.m_aClan);
 		});
 
-		RenderQuickAction(&Row1, ActionWidth, FontIcons::FONT_ICON_BAN, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f), Client.m_ChatIgnore, [&]() {
+		RenderQuickAction(&Row1, ActionWidth, FontIcon::BAN, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f), Client.m_ChatIgnore, [&]() {
 			Client.m_ChatIgnore ^= 1;
 		});
 
-		RenderQuickAction(&Row1, ActionWidth, Client.m_EmoticonIgnore ? FontIcons::FONT_ICON_COMMENT_SLASH : FontIcons::FONT_ICON_COMMENT,
+		RenderQuickAction(&Row1, ActionWidth, Client.m_EmoticonIgnore ? FontIcon::COMMENT_SLASH : FontIcon::COMMENT,
 			ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f), Client.m_EmoticonIgnore, [&]() {
 				Client.m_EmoticonIgnore ^= 1;
 			});
@@ -448,7 +450,7 @@ void CPlayerMenu::RenderPlayerMenuPopUpQuickActions(CUIRect *pBase)
 		CUIRect Row2 = Row;
 		const float ActionWidth = (Row2.w - QuickActionSpacing * 2.0f) / 3.0f;
 		const bool IsTracked = GameClient()->m_RClient.IsTracked(Client.ClientId());
-		RenderQuickAction(&Row2, ActionWidth, FontIcons::FONT_ICON_LIST_TRACK, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f), IsTracked, [&]() {
+		RenderQuickAction(&Row2, ActionWidth, FontIcon::RC_LIST_TRACK, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f), IsTracked, [&]() {
 			if(IsTracked)
 				GameClient()->m_RClient.TargetPlayerPosRemove(Client.m_aName);
 			else
@@ -456,7 +458,7 @@ void CPlayerMenu::RenderPlayerMenuPopUpQuickActions(CUIRect *pBase)
 		});
 
 		const bool IsInTeamList = GameClient()->m_RClient.IsInWarlist(Client.ClientId(), 2);
-		RenderQuickAction(&Row2, ActionWidth, FontIcons::FONT_ICON_USERS, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f), IsInTeamList, [&]() {
+		RenderQuickAction(&Row2, ActionWidth, FontIcon::ICON_USERS, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f), IsInTeamList, [&]() {
 			if(IsInTeamList)
 				GameClient()->m_WarList.RemoveWarEntryInGame(2, Client.m_aName, false);
 			else
@@ -464,7 +466,7 @@ void CPlayerMenu::RenderPlayerMenuPopUpQuickActions(CUIRect *pBase)
 		});
 
 		const bool IsInWarList = GameClient()->m_RClient.IsInWarlist(Client.ClientId(), 1);
-		RenderQuickAction(&Row2, ActionWidth, FontIcons::FONT_ICON_PERSON_RIFLE, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f), IsInWarList, [&]() {
+		RenderQuickAction(&Row2, ActionWidth, FontIcon::RC_PERSON_RIFLE, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f), ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f), IsInWarList, [&]() {
 			if(IsInWarList)
 				GameClient()->m_WarList.RemoveWarEntryInGame(1, Client.m_aName, false);
 			else

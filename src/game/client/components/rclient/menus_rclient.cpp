@@ -1,9 +1,8 @@
-#include <base/math.h>
-#include <base/system.h>
-#include <base/str.h>
+#include "engine/font_icons.h"
 
-#include <algorithm>
-#include <cctype>
+#include <base/math.h>
+#include <base/str.h>
+#include <base/system.h>
 
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
@@ -11,21 +10,22 @@
 #include <engine/storage.h>
 #include <engine/textrender.h>
 
-#include <game/localization.h>
 #include <generated/protocol.h>
 
-#include <SDL_audio.h>
-
+#include <game/client/animstate.h>
 #include <game/client/components/menu_background.h>
 #include <game/client/components/menus.h>
-#include <game/client/animstate.h>
 #include <game/client/components/rclient/bindwheel.h>
 #include <game/client/components/tclient/bindchat.h>
-
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
 #include <game/client/ui_scrollregion.h>
+#include <game/localization.h>
 
+#include <SDL_audio.h>
+
+#include <algorithm>
+#include <cctype>
 #include <vector>
 enum
 {
@@ -60,8 +60,6 @@ enum
 	RCLIENT_SETTINGS_SECTION_VOICE,
 	NUM_RCLIENT_SETTINGS_SECTIONS
 };
-
-using namespace FontIcons;
 
 static float s_Time = 0.0f;
 static bool s_StartedTime = false;
@@ -587,7 +585,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Props.m_EnableWidthCheck = false;
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
-		Ui()->DoLabel(&ExpandButton, s_aSectionExpanded[SectionId] ? FONT_ICON_CHEVRON_UP : FONT_ICON_CHEVRON_DOWN, HeadlineFontSize, TEXTALIGN_MR, Props);
+		Ui()->DoLabel(&ExpandButton, s_aSectionExpanded[SectionId] ? FontIcon::CHEVRON_UP : FontIcon::CHEVRON_DOWN, HeadlineFontSize, TEXTALIGN_MR, Props);
 		TextRender()->SetRenderFlags(0);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 
@@ -840,6 +838,12 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		}
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiColorFreezeNoYourself, RCLocalize("No colored frozen tee skins for yourself"), &g_Config.m_RiColorFreezeNoYourself, &Column, LineSize);
+		static std::vector<CButtonContainer> s_vFastInputVerButtonContainers = {{}, {}};
+		DoLine_RadioMenu(Column, RCLocalize("FastInput version:", ""),
+			s_vFastInputVerButtonContainers,
+			{RCLocalize("Tater's old", ""), RCLocalize("Tater's new", "")},
+			{0, 1},
+			g_Config.m_RiFastInputVersion);
 	}
 	EndSection(Column);
 
@@ -1226,6 +1230,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	static CButtonContainer s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu;
 	DoLine_KeyReader(Label, s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu, RCLocalize("Player menu"), "toggle_playermenu");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
 	static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
 	DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -1310,9 +1315,32 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceIgnoreDistance, RCLocalize("Ignore distance"), &g_Config.m_RiVoiceIgnoreDistance, &Column, LineSize);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceGroupGlobal, RCLocalize("Hear group members everywhere"), &g_Config.m_RiVoiceGroupGlobal, &Column, LineSize);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	static SDropDownSimple s_VoiceGroupModeDrop;
+	g_Config.m_RiVoiceGroupMode = DoSimpleDropDown(
+		Ui(),
+		Column,
+		RCLocalize("Group mode"),
+		g_Config.m_RiVoiceGroupMode,
+		{"Hear All / Send to All", "Hear Group / Send to Group", "Hear All / Send to Group", "Hear Group / Send to All"},
+		"Voice group mode",
+		s_VoiceGroupModeDrop);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
+	Ui()->DoLabel(&Label, RCLocalize("Group token"), FontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	static CLineInput s_VoiceGroupToken(g_Config.m_RiVoiceToken, sizeof(g_Config.m_RiVoiceToken));
+	s_VoiceGroupToken.SetEmptyText(RCLocalize("Group token"));
+	Ui()->DoEditBox(&s_VoiceGroupToken, &Button, FontSize);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowWhenActive, RCLocalize("Show when microphone active"), &g_Config.m_RiVoiceShowWhenActive, &Column, LineSize);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceStereo, RCLocalize("Stereo output (pan left/right)"), &g_Config.m_RiVoiceStereo, &Column, LineSize);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_RiVoiceStereoWidth, &g_Config.m_RiVoiceStereoWidth, &Button, RCLocalize("Stereo width (%)"), 0, 200);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceFilterEnable, RCLocalize("Voice filter (HPF+compressor+limiter)"), &g_Config.m_RiVoiceFilterEnable, &Column, LineSize);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);

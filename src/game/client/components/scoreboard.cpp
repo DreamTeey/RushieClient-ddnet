@@ -4,6 +4,7 @@
 
 #include <engine/console.h>
 #include <engine/demo.h>
+#include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
@@ -758,7 +759,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					TextRender()->TextColor(ColorRGBA(1.0f, 0.0f, 0.0f, PrevColor.a));
 
 					TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-					TextRender()->TextEx(&Cursor, FontIcons::FONT_ICON_HEART);
+					TextRender()->TextEx(&Cursor, FontIcon::HEART);
 					TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 
 					TextRender()->TextColor(PrevColor);
@@ -768,7 +769,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				if(pInfo->m_ClientId >= 0 && (GameClient()->m_aClients[pInfo->m_ClientId].m_Foe || GameClient()->m_aClients[pInfo->m_ClientId].m_ChatIgnore))
 				{
 					TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-					TextRender()->TextEx(&Cursor, FontIcons::FONT_ICON_COMMENT_SLASH);
+					TextRender()->TextEx(&Cursor, FontIcon::COMMENT_SLASH);
 					TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 				}
 
@@ -1141,7 +1142,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 
 		ColorRGBA FriendActionColor = Client.m_Friend ? ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction)) :
 								ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction));
-		const char *pFriendActionIcon = pUi->HotItem() == &pPopupContext->m_FriendAction && Client.m_Friend ? FontIcons::FONT_ICON_HEART_CRACK : FontIcons::FONT_ICON_HEART;
+		const char *pFriendActionIcon = pUi->HotItem() == &pPopupContext->m_FriendAction && Client.m_Friend ? FontIcon::HEART_CRACK : FontIcon::HEART;
 		if(pUi->DoButton_FontIcon(&pPopupContext->m_FriendAction, pFriendActionIcon, Client.m_Friend, &Action, BUTTONFLAG_LEFT, ActionCorners, true, FriendActionColor))
 		{
 			if(Client.m_Friend)
@@ -1159,7 +1160,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		Container.VSplitLeft(ActionSpacing, nullptr, &Container);
 		Container.VSplitLeft(ActionSize, &Action, &Container);
 
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_MuteAction, FontIcons::FONT_ICON_BAN, Client.m_ChatIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_MuteAction, FontIcon::BAN, Client.m_ChatIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))
 		{
 			Client.m_ChatIgnore ^= 1;
 		}
@@ -1168,7 +1169,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		Container.VSplitLeft(ActionSpacing, nullptr, &Container);
 		Container.VSplitLeft(ActionSize, &Action, &Container);
 
-		const char *EmoticonActionIcon = Client.m_EmoticonIgnore ? FontIcons::FONT_ICON_COMMENT_SLASH : FontIcons::FONT_ICON_COMMENT;
+		const char *EmoticonActionIcon = Client.m_EmoticonIgnore ? FontIcon::COMMENT_SLASH : FontIcon::COMMENT;
 		if(pUi->DoButton_FontIcon(&pPopupContext->m_EmoticonAction, EmoticonActionIcon, Client.m_EmoticonIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))
 		{
 			Client.m_EmoticonIgnore ^= 1;
@@ -1184,7 +1185,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		const bool IsTracked = pScoreboard->GameClient()->m_RClient.IsTracked(Client.ClientId());
 		ColorRGBA TrackerActionColor = pUi->HotItem() == &pPopupContext->m_TrackerAction ? IsTracked ? ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_TrackerAction)) : ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_TrackerAction)) :
 								IsTracked ? ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f);
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_TrackerAction, FontIcons::FONT_ICON_LIST_TRACK, IsTracked, &Action, BUTTONFLAG_LEFT, ActionCorners, true, TrackerActionColor))
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_TrackerAction, FontIcon::RC_LIST_TRACK, IsTracked, &Action, BUTTONFLAG_LEFT, ActionCorners, true, TrackerActionColor))
 		{
 			if(IsTracked)
 			{
@@ -1203,7 +1204,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		const bool IsInTeamList = pScoreboard->GameClient()->m_RClient.IsInWarlist(Client.ClientId(), 2);
 		ColorRGBA TeamActionColor = pUi->HotItem() == &pPopupContext->m_TeamAction ? IsInTeamList ? ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_TeamAction)) : ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_TeamAction)) :
 								IsInTeamList ? ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f);
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_TeamAction, FontIcons::FONT_ICON_USERS, IsInTeamList, &Action, BUTTONFLAG_LEFT, ActionCorners, true, TeamActionColor))
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_TeamAction, FontIcon::ICON_USERS, IsInTeamList, &Action, BUTTONFLAG_LEFT, ActionCorners, true, TeamActionColor))
 		{
 			if(IsInTeamList)
 			{
@@ -1222,7 +1223,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		const bool IsInWarList = pScoreboard->GameClient()->m_RClient.IsInWarlist(Client.ClientId(), 1);
 		ColorRGBA WarActionColor = pUi->HotItem() == &pPopupContext->m_WarAction ? IsInWarList ? ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_TrackerAction)) : ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_TrackerAction)) :
 								IsInWarList ? ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f);
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarAction, FontIcons::FONT_ICON_PERSON_RIFLE, IsInTeamList, &Action, BUTTONFLAG_LEFT, ActionCorners, true, WarActionColor))
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarAction, FontIcon::RC_PERSON_RIFLE, IsInTeamList, &Action, BUTTONFLAG_LEFT, ActionCorners, true, WarActionColor))
 		{
 			if(IsInWarList)
 			{
