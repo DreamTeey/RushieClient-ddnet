@@ -31,7 +31,6 @@ enum
 	NUMBER_OF_MCLIENT_TABS
 };
 
-using namespace FontIcons;
 
 static float s_Time = 0.0f;
 static bool s_StartedTime = false;
