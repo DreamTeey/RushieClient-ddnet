@@ -258,6 +258,9 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
                 });
             }
             DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendNotifyOffline, MCLocalize("好友下线提醒"), &g_Config.m_McFriendNotifyOffline, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
                 DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendAutoGreet, MCLocalize("好友进图自动打招呼"), &g_Config.m_McFriendAutoGreet, pRect, LineSize);
             });
             if(g_Config.m_McFriendAutoGreet) {

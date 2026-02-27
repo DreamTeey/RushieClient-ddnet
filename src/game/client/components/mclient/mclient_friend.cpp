@@ -82,8 +82,9 @@ void CMClient::CheckFriendNotification()
 	{
 		if(!m_aFriendStates[i].m_IsStillOnline)
 		{
-			// 触发下线提醒
-			OnFriendLeave(m_aFriendStates[i].m_aName, m_aFriendStates[i].m_aClan);
+			// 触发下线提醒（如果启用）
+			if(g_Config.m_McFriendNotifyOffline)
+				OnFriendLeave(m_aFriendStates[i].m_aName, m_aFriendStates[i].m_aClan);
 
 			// 从数组中移除（用末尾元素覆盖当前位置）
 			if(m_NumFriendStates > 1)
@@ -104,36 +105,57 @@ void CMClient::OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::C
 
 	// 发送通知到聊天框
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "+++ 好友 [%s] 已上线 | 位置: %s", pFriendName, pServerInfo->m_aName);
+	// str_format(aBuf, sizeof(aBuf), "[%s] 已上线 | 位置: %s", pFriendName, pServerInfo->m_aName);
+	str_format(aBuf, sizeof(aBuf), "[%s] 已上线", pFriendName);
+
 	GameClient()->m_Chat.Echo(aBuf);
 
-	// 如果启用了自动打招呼功能
+	// 如果启用了自动打招呼功能，且好友在当前服务器
 	if(g_Config.m_McFriendAutoGreet)
 	{
-		// 准备打招呼文本
-		char aGreetText[256];
-		str_copy(aGreetText, g_Config.m_McFriendAutoGreetText, sizeof(aGreetText));
+		// 获取当前服务器信息
+		CServerInfo CurrentServerInfo;
+		Client()->GetServerInfo(&CurrentServerInfo);
 
-		// 替换 {name} 为好友名字
-		const char *pPos = str_find(aGreetText, "{name}");
-		if(pPos)
+		// 检查是否是当前服务器（比较地址）
+		bool bIsCurrentServer = false;
+		for(int i = 0; i < pServerInfo->m_NumAddresses && i < CurrentServerInfo.m_NumAddresses; i++)
 		{
-			char aNewGreetText[256];
-			int PrefixLen = pPos - aGreetText;
-			str_copy(aNewGreetText, aGreetText, PrefixLen + 1);
-			str_append(aNewGreetText, pFriendName, sizeof(aNewGreetText));
-			str_append(aNewGreetText, pPos + str_length("{name}"), sizeof(aNewGreetText));
-			str_copy(aGreetText, aNewGreetText, sizeof(aGreetText));
+			if(net_addr_comp(&pServerInfo->m_aAddresses[i], &CurrentServerInfo.m_aAddresses[i]) == 0)
+			{
+				bIsCurrentServer = true;
+				break;
+			}
 		}
 
-		// 发送打招呼消息
-		GameClient()->m_Chat.SendChat(0, aGreetText);
+		// 只在当前服务器发送打招呼消息
+		if(bIsCurrentServer)
+		{
+			// 准备打招呼文本
+			char aGreetText[256];
+			str_copy(aGreetText, g_Config.m_McFriendAutoGreetText, sizeof(aGreetText));
+
+			// 替换 {name} 为好友名字
+			const char *pPos = str_find(aGreetText, "{name}");
+			if(pPos)
+			{
+				char aNewGreetText[256];
+				int PrefixLen = pPos - aGreetText;
+				str_copy(aNewGreetText, aGreetText, PrefixLen + 1);
+				str_append(aNewGreetText, pFriendName, sizeof(aNewGreetText));
+				str_append(aNewGreetText, pPos + str_length("{name}"), sizeof(aNewGreetText));
+				str_copy(aGreetText, aNewGreetText, sizeof(aGreetText));
+			}
+
+			// 发送打招呼消息
+			GameClient()->m_Chat.SendChat(0, aGreetText);
+		}
 	}
 }
 
 void CMClient::OnFriendLeave(const char *pName, const char *pClan)
 {
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "--- 好友 [%s] 已下线或离开服务器", pName);
+	str_format(aBuf, sizeof(aBuf), "[%s] 已下线或离开服务器", pName);
 	GameClient()->m_Chat.Echo(aBuf);
 }
