@@ -2,7 +2,6 @@
 
 #include <engine/input.h>
 #include <engine/shared/config.h>
-
 #include <game/client/gameclient.h>
 #include <game/gamecore.h>
 
@@ -14,6 +13,8 @@ CMClient::CMClient()
 	m_RainbowDelay = 0;
 	m_LastFriendRefreshTime = 0.0f;
 	m_NumFriendStates = 0;
+	m_BodyHue = 0.0f;
+	m_FeetHue = 0.0f;
 	mem_zero(m_aFriendStates, sizeof(m_aFriendStates));
 }
 
@@ -29,51 +30,71 @@ void CMClient::OnConsoleInit()
 
 void CMClient::OnRender()
 {
+	// 性能优化：提前返回检查
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+
 	// 检查克隆人皮肤复制功能
-	CheckCloneSkin();
+	if(g_Config.m_McClonePlayer)
+	{
+		CheckCloneSkin();
+	}
 
 	// 更新彩虹Tee颜色
-	UpdateRainbow();
+	if(g_Config.m_McRainbowTee)
+	{
+		UpdateRainbow();
+	}
 
 	// 检查好友上线提醒
-	CheckFriendNotification();
-
-	if(!g_Config.m_McRandomSkinRotate || Client()->State() != IClient::STATE_ONLINE)
-		return;
-
-	if(g_Config.m_McRandomSkinRotateOnlyLeftClick && !Input()->KeyIsPressed(KEY_MOUSE_1))
-		return;
-
-	float CurrentTime = Client()->LocalTime();
-
-	// 处理主体
-	if(CurrentTime - m_LastRotateTime >= g_Config.m_McRandomSkinRotateInterval)
+	if(g_Config.m_McFriendNotify)
 	{
-		if(g_Config.m_McRandomSkinRotateMain || g_Config.m_McRandomSkinRotateMainColor)
-		{
-			if(g_Config.m_McRandomSkinRotateMain)
-				g_Config.m_ClPlayerUseCustomColor = false;
-			if(g_Config.m_McRandomSkinRotateMainColor)
-				g_Config.m_ClPlayerUseCustomColor = true;
-			GameClient()->m_Skins.RandomizeSkin(0);
-			GameClient()->SendInfo(false);
-		}
-		if(g_Config.m_McRandomSkinRotateDummy || g_Config.m_McRandomSkinRotateDummyColor)
-		{
-			if(g_Config.m_McRandomSkinRotateDummy)
-				g_Config.m_ClDummyUseCustomColor = false;
-			if(g_Config.m_McRandomSkinRotateDummyColor)
-				g_Config.m_ClDummyUseCustomColor = true;
-			GameClient()->m_Skins.RandomizeSkin(1);
-			GameClient()->SendDummyInfo(false);
-		}
-		m_LastRotateTime = CurrentTime;
+		CheckFriendNotification();
+	}
+
+	// 随机皮肤轮换
+	if(g_Config.m_McRandomSkinRotate && ShouldRotateSkin())
+	{
+		HandleSkinRotation();
+		m_LastRotateTime = Client()->LocalTime();
+	}
+}
+
+bool CMClient::CanCloneSkin() const
+{
+	return g_Config.m_McClonePlayer && Client()->State() == IClient::STATE_ONLINE;
+}
+
+bool CMClient::ShouldRotateSkin() const
+{
+	if(g_Config.m_McRandomSkinRotateOnlyLeftClick && !Input()->KeyIsPressed(KEY_MOUSE_1))
+		return false;
+		
+	return (Client()->LocalTime() - m_LastRotateTime) >= g_Config.m_McRandomSkinRotateInterval;
+}
+
+void CMClient::HandleSkinRotation()
+{
+	// 主体皮肤轮换
+	if(g_Config.m_McRandomSkinRotateMain || g_Config.m_McRandomSkinRotateMainColor)
+	{
+		g_Config.m_ClPlayerUseCustomColor = g_Config.m_McRandomSkinRotateMainColor;
+		GameClient()->m_Skins.RandomizeSkin(0);
+		GameClient()->SendInfo(false);
+	}
+	
+	// 分身皮肤轮换
+	if(g_Config.m_McRandomSkinRotateDummy || g_Config.m_McRandomSkinRotateDummyColor)
+	{
+		g_Config.m_ClDummyUseCustomColor = g_Config.m_McRandomSkinRotateDummyColor;
+		GameClient()->m_Skins.RandomizeSkin(1);
+		GameClient()->SendDummyInfo(false);
 	}
 }
 
 void CMClient::CheckCloneSkin()
 {
-	if(!g_Config.m_McClonePlayer || Client()->State() != IClient::STATE_ONLINE)
+	if(!CanCloneSkin())
 		return;
 
 	int LocalId = GameClient()->m_Snap.m_LocalClientId;
@@ -108,109 +129,128 @@ void CMClient::CheckCloneSkin()
 	// 锤击生效
 	if(g_Config.m_McCloneOnHammer && !ShouldClone)
 	{
-		const CNetObj_PlayerInput *pInput = &GameClient()->m_aClients[LocalId].m_Predicted.m_Input;
-		if(!pInput)
-			return;
-		
-		if(pInput->m_WantedWeapon == WEAPON_HAMMER)
-		{
-			if(pInput->m_Fire & 1)
-			{
-				vec2 Dir = normalize(vec2(pInput->m_TargetX, pInput->m_TargetY));
-				if(Dir.x == 0.0f && Dir.y == 0.0f)
-					Dir = vec2(0.0f, -1.0f);
-
-				const float Radius = 28.0f;
-				const vec2 ProjStartPos = LocalPos + Dir * Radius * 0.75f;
-
-				float MinDistance = 9999.0f;
-				for(int i = 0; i < MAX_CLIENTS; i++)
-				{
-					if(i == LocalId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
-						continue;
-
-					vec2 OtherPos = vec2(
-						GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_X,
-						GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_Y
-					);
-
-					float Distance = distance(ProjStartPos, OtherPos);
-					if(Distance < MinDistance && Distance < Radius * 0.5f)
-					{
-						MinDistance = Distance;
-						TargetId = i;
-					}
-				}
-
-				if(TargetId != -1 && TargetId != m_LastClonedClientId)
-				{
-					ShouldClone = true;
-				}
-			}
-		}
+		ShouldClone = CheckHammerClone(LocalPos, LocalId, TargetId);
 	}
 
+	// 距离生效
 	if(g_Config.m_McCloneOnDistance && !ShouldClone)
 	{
-		float MinDistance = 9999.0f;
-		for(int i = 0; i < MAX_CLIENTS; i++)
-		{
-			if(i == LocalId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
-				continue;
-
-			vec2 OtherPos = vec2(
-				GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_X,
-				GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_Y
-			);
-
-			float Distance = distance(LocalPos, OtherPos);
-			if(Distance < MinDistance)
-			{
-				MinDistance = Distance;
-				TargetId = i;
-			}
-		}
-
-		if(MinDistance < 50.0f && TargetId != m_LastClonedClientId)
-		{
-			ShouldClone = true;
-		}
+		ShouldClone = CheckDistanceClone(LocalPos, TargetId);
 	}
 
-	if(ShouldClone && TargetId != -1 && TargetId != m_LastClonedClientId)
+	// if(ShouldClone && TargetId != -1 && TargetId != m_LastClonedClientId)
+	if(ShouldClone && TargetId != -1)
 	{
-		CGameClient::CClientData *pTarget = &GameClient()->m_aClients[TargetId];
-		TargetId = GameClient()->m_aClients[LocalId].m_Predicted.HookedPlayer();
-		if (IsDummy) 
-		{
-			if (g_Config.m_McCloneCopyName) 
-			{
-				str_copy(g_Config.m_ClDummyName, pTarget->m_aName, sizeof(g_Config.m_ClDummyName));//名字
-				g_Config.m_ClDummyCountry = pTarget->m_Country;//国家
-				str_copy(g_Config.m_ClDummyClan, pTarget->m_aClan, sizeof(g_Config.m_ClDummyClan));	//战队
-			}
-			str_copy(g_Config.m_ClDummySkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClDummySkin));
-			g_Config.m_ClDummyUseCustomColor = pTarget->m_UseCustomColor;
-			g_Config.m_ClDummyColorBody = pTarget->m_ColorBody;
-			g_Config.m_ClDummyColorFeet = pTarget->m_ColorFeet;
-			GameClient()->SendDummyInfo(false);
-		}
-		else 
-		{
-			if (g_Config.m_McCloneCopyName) 
-			{
-				str_copy(g_Config.m_PlayerName, pTarget->m_aName, sizeof(g_Config.m_PlayerName));//名字
-				g_Config.m_PlayerCountry = pTarget->m_Country;//国家
-				str_copy(g_Config.m_PlayerClan, pTarget->m_aClan, sizeof(g_Config.m_PlayerClan));	//战队
-			}
-			str_copy(g_Config.m_ClPlayerSkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClPlayerSkin));
-			g_Config.m_ClPlayerUseCustomColor = pTarget->m_UseCustomColor;
-			g_Config.m_ClPlayerColorBody = pTarget->m_ColorBody;
-			g_Config.m_ClPlayerColorFeet = pTarget->m_ColorFeet;
-			GameClient()->SendInfo(false);
-		}
+		CopyPlayerSkin(TargetId, IsDummy);
 		m_LastClonedClientId = TargetId;
 	}
+}
+
+bool CMClient::CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId)
+{
+	const CNetObj_PlayerInput *pInput = &GameClient()->m_aClients[LocalId].m_Predicted.m_Input;
+	if(!pInput || pInput->m_WantedWeapon != WEAPON_HAMMER || !(pInput->m_Fire & 1))
+		return false;
+
+	const vec2 Dir = normalize(vec2(pInput->m_TargetX, pInput->m_TargetY));
+	const vec2 ProjStartPos = LocalPos + Dir * HAMMER_RADIUS * 0.75f;
+
+	float MinDistance = 9999.0f;
+	
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(i == LocalId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			continue;
+
+		const vec2 OtherPos = vec2(
+			GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_X,
+			GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_Y
+		);
+
+		const float Distance = distance(ProjStartPos, OtherPos);
+		if(Distance < MinDistance && Distance < HAMMER_RADIUS * 0.5f)
+		{
+			MinDistance = Distance;
+			TargetId = i;
+		}
+	}
+
+	// return TargetId != -1 && TargetId != m_LastClonedClientId;
+	return TargetId != -1;
+}
+
+bool CMClient::CheckDistanceClone(const vec2& LocalPos, int& TargetId)
+{
+	float MinDistance = 9999.0f;
+	
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(i == GameClient()->m_Snap.m_LocalClientId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			continue;
+
+		const vec2 OtherPos = vec2(
+			GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_X,
+			GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_Y
+		);
+
+		const float Distance = distance(LocalPos, OtherPos);
+		if(Distance < MinDistance)
+		{
+			MinDistance = Distance;
+			TargetId = i;
+		}
+	}
+
+	return MinDistance < MAX_CLONE_DISTANCE;
+	// return MinDistance < MAX_CLONE_DISTANCE && TargetId != m_LastClonedClientId;
+}
+
+void CMClient::CopyPlayerSkin(int TargetId, bool IsDummy)
+{
+	CGameClient::CClientData *pTarget = &GameClient()->m_aClients[TargetId];
+	
+	// 复制基本信息
+	if(g_Config.m_McCloneCopyName)
+	{
+		if(IsDummy)
+		{
+			str_copy(g_Config.m_ClDummyName, pTarget->m_aName, sizeof(g_Config.m_ClDummyName));
+			g_Config.m_ClDummyCountry = pTarget->m_Country;
+			str_copy(g_Config.m_ClDummyClan, pTarget->m_aClan, sizeof(g_Config.m_ClDummyClan));
+		}
+		else
+		{
+			str_copy(g_Config.m_PlayerName, pTarget->m_aName, sizeof(g_Config.m_PlayerName));
+			g_Config.m_PlayerCountry = pTarget->m_Country;
+			str_copy(g_Config.m_PlayerClan, pTarget->m_aClan, sizeof(g_Config.m_PlayerClan));
+		}
+	}
+
+	// 复制皮肤信息
+	if(IsDummy)
+	{
+		str_copy(g_Config.m_ClDummySkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClDummySkin));
+		g_Config.m_ClDummyUseCustomColor = pTarget->m_UseCustomColor;
+		g_Config.m_ClDummyColorBody = pTarget->m_ColorBody;
+		g_Config.m_ClDummyColorFeet = pTarget->m_ColorFeet;
+	}
+	else
+	{
+		str_copy(g_Config.m_ClPlayerSkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClPlayerSkin));
+		g_Config.m_ClPlayerUseCustomColor = pTarget->m_UseCustomColor;
+		g_Config.m_ClPlayerColorBody = pTarget->m_ColorBody;
+		g_Config.m_ClPlayerColorFeet = pTarget->m_ColorFeet;
+	}
+
+	SendSkinUpdate(IsDummy);
+}
+
+void CMClient::SendSkinUpdate(bool IsDummy)
+{
+	if(IsDummy)
+		GameClient()->SendDummyInfo(false);
+	else
+		GameClient()->SendInfo(false);
 }
 
 void CMClient::UpdateRainbow()
@@ -226,36 +266,33 @@ void CMClient::UpdateRainbow()
     int OriginalFeetColor = g_Config.m_ClPlayerColorFeet;
     float FeetSat = ((OriginalFeetColor >> 8) & 0xFF) / 255.0f;
     float FeetLht = (OriginalFeetColor & 0xFF) / 255.0f;
-
-    static float BodyHue = 0.0f;
-    static float FeetHue = 0.0f;
     
     // 更新身体色相
     if(g_Config.m_McRainbowTeeBody)
     {
         float BodySpeed = g_Config.m_McRainbowTeeBodySpeed * Client()->FrameTimeAverage() * 0.01f;
-        BodyHue += BodySpeed;
-        if(BodyHue > 1.0f) BodyHue -= 1.0f;
+        m_BodyHue += BodySpeed;
+        if(m_BodyHue > 1.0f) m_BodyHue -= 1.0f;
     }
     
     // 更新脚部色相
     if(g_Config.m_McRainbowTeeFeet)
     {
         float FeetSpeed = g_Config.m_McRainbowTeeFeetSpeed * Client()->FrameTimeAverage() * 0.01f;
-        FeetHue += FeetSpeed;
-        if(FeetHue > 1.0f) FeetHue -= 1.0f;
+        m_FeetHue += FeetSpeed;
+        if(m_FeetHue > 1.0f) m_FeetHue -= 1.0f;
     }
 
     if(g_Config.m_McRainbowTeeBody)
     {
-        int BodyRainbowColor = getIntFromColor(BodyHue, BodySat, BodyLht);
+        int BodyRainbowColor = getIntFromColor(m_BodyHue, BodySat, BodyLht);
         g_Config.m_ClPlayerColorBody = BodyRainbowColor;
         g_Config.m_ClDummyColorBody = BodyRainbowColor;
     }
 
     if(g_Config.m_McRainbowTeeFeet)
     {
-        int FeetRainbowColor = getIntFromColor(FeetHue, FeetSat, FeetLht);
+        int FeetRainbowColor = getIntFromColor(m_FeetHue, FeetSat, FeetLht);
         g_Config.m_ClPlayerColorFeet = FeetRainbowColor;
         g_Config.m_ClDummyColorFeet = FeetRainbowColor;
     }

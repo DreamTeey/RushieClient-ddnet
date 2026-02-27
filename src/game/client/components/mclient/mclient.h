@@ -7,6 +7,12 @@
 
 class CMClient : public CComponent
 {
+private:
+	// 常量定义
+	static constexpr int MAX_CLONE_DISTANCE = 50;
+	static constexpr int HAMMER_RADIUS = 28;
+	static constexpr float DEFAULT_HUE_SPEED = 0.01f;
+
 public:
 	CMClient();
 
@@ -25,18 +31,39 @@ public:
 	void UpdateFriendList();
 	void OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::CClient *pFriendClient);	
 	void OnFriendLeave(const char *pName, const char *pClan);
+
 	// 颜色转换函数
-	int getIntFromColor(float Hue, float Sat, float LhT)
+	static int getIntFromColor(float Hue, float Sat, float LhT)
 	{
-		int R = round(255 * Hue);
-		int G = round(255 * Sat);
-		int B = round(255 * LhT);
+		int R = (int)(round(255 * Hue));
+		int G = (int)(round(255 * Sat));
+		int B = (int)(round(255 * LhT));
 		R = (R << 16) & 0x00FF0000;
 		G = (G << 8) & 0x0000FF00;
 		B = B & 0x000000FF;
 		return 0xFF000000 | R | G | B;
 	}
+
 private:
+	// Helper方法
+	bool CanCloneSkin() const;
+	bool ShouldRotateSkin() const;
+	void HandleSkinRotation();
+	void CopyPlayerSkin(int TargetId, bool IsDummy);
+	void SendSkinUpdate(bool IsDummy);
+	bool CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId);
+	bool CheckDistanceClone(const vec2& LocalPos, int& TargetId);
+	
+	// 好友功能辅助方法
+	void ScanServersForFriends();
+	void HandleFriendClient(const CServerInfo *pServerInfo, const CServerInfo::CClient *pClient);
+	int FindFriendInList(const CServerInfo::CClient *pClient) const;
+	void AddFriendToList(const CServerInfo::CClient *pClient);
+	void ProcessOfflineFriends();
+	void RemoveFriendFromList(int Index);
+	bool IsFriendInCurrentServer(const CServerInfo *pFriendServerInfo) const;
+	void SendGreetingMessage(const char *pFriendName);
+	
 	// 逻辑计时器
 	float m_LastRotateTime;
 
@@ -46,6 +73,10 @@ private:
 	// 最后复制的玩家ID
 	int m_LastClonedClientId;
 	int64_t m_RainbowDelay;
+
+	// 彩虹tee颜色状态
+	float m_BodyHue;
+	float m_FeetHue;
 
 	// 好友上线提醒相关
 	float m_LastFriendRefreshTime;

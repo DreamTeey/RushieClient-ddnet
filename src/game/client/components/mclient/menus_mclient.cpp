@@ -33,7 +33,6 @@ enum
 	NUMBER_OF_MCLIENT_TABS
 };
 
-
 static float s_Time = 0.0f;
 static bool s_StartedTime = false;
 
@@ -258,6 +257,9 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
                 });
             }
             DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendNotifyOffline, MCLocalize("好友下线提醒"), &g_Config.m_McFriendNotifyOffline, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
                 DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendAutoGreet, MCLocalize("好友进图自动打招呼"), &g_Config.m_McFriendAutoGreet, pRect, LineSize);
             });
             if(g_Config.m_McFriendAutoGreet) {
@@ -287,6 +289,7 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
     s_ScrollRegion.AddRect(ScrollRect);
     s_ScrollRegion.End();
 }
+
 void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button, Label, LowerLeftView;
@@ -303,7 +306,7 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 
 	static CButtonContainer s_WebsiteButton;
 	LeftView.HSplitTop(LineSize * 2.0f, &Button, &LeftView);
-	if(DoButtonLineSize_Menu(&s_WebsiteButton, MCLocalize("Website"), 0, &Button, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(DoButton_Menu(&s_WebsiteButton, MCLocalize("Website"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 		Client()->ViewLink("https://github.com");
 
 	LeftView = LowerLeftView;
@@ -318,9 +321,9 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 	LeftView.HSplitTop(LineSize * 2.0f, &Button, &LeftView);
 
 	static CButtonContainer s_Config;
-	if(DoButtonLineSize_Menu(&s_Config, MCLocalize("MClient Settings"), 0, &Button, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(DoButton_Menu(&s_Config, MCLocalize("MClient Settings"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::MCLIENT].m_aConfigPath, aBuf, sizeof(aBuf));
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mclient_config.cfg", aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
 
@@ -337,10 +340,10 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 	{
 		RightView.HSplitTop(CardSize, &DevCardRect, &RightView);
 		DevCardRect.VSplitLeft(CardSize, &TeeRect, &Label);
-		Label.VSplitLeft(TextRender()->TextWidth(LineSize, "Developer"), &Label, &Button);
+		Label.VSplitLeft(TextRender()->TextWidth(12.0f, "Developer"), &Label, &Button);
 		Button.VSplitLeft(MarginSmall, nullptr, &Button);
 		Button.w = LineSize, Button.h = LineSize, Button.y = Label.y + (Label.h / 2.0f - Button.h / 2.0f);
-		Ui()->DoLabel(&Label, "Developer", LineSize, TEXTALIGN_ML);
-		RenderDevSkin(TeeRect.Center(), 50.0f, "default", "default", false, 0, 0, 0, false, true);
+		Ui()->DoLabel(&Label, "Developer", 12.0f, TEXTALIGN_ML);
+		// RenderDevSkin(TeeRect.Center(), 50.0f, "default", "default", false, 0, 0, 0, false, true);
 	}
 }

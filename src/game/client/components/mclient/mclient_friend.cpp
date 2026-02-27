@@ -34,6 +34,14 @@ void CMClient::CheckFriendNotification()
 		m_aFriendStates[i].m_IsStillOnline = false;
 
 	// 3. 扫描阶段：遍历所有服务器查找好友
+	ScanServersForFriends();
+
+	// 4. 清理与下线提醒阶段
+	ProcessOfflineFriends();
+}
+
+void CMClient::ScanServersForFriends()
+{
 	int NumServers = GameClient()->ServerBrowser()->NumServers();
 	for(int i = 0; i < NumServers; i++)
 	{
@@ -47,53 +55,79 @@ void CMClient::CheckFriendNotification()
 			if(!pClient || pClient->m_FriendState == IFriends::FRIEND_NO)
 				continue;
 
-			// 在现有列表中查找该好友
-			int FoundIndex = -1;
-			for(int k = 0; k < m_NumFriendStates; k++)
-			{
-				if(str_comp(m_aFriendStates[k].m_aName, pClient->m_aName) == 0 &&
-				   str_comp(m_aFriendStates[k].m_aClan, pClient->m_aClan) == 0)
-				{
-					FoundIndex = k;
-					break;
-				}
-			}
-
-			if(FoundIndex >= 0)
-			{
-				// 已在列表中，更新状态为在线
-				m_aFriendStates[FoundIndex].m_IsStillOnline = true;
-			}
-			else if(m_NumFriendStates < IFriends::MAX_FRIENDS)
-			{
-				// 发现新上线的好友！
-				OnFriendJoin(pServerInfo, pClient);
-				
-				int NewIdx = m_NumFriendStates++;
-				str_copy(m_aFriendStates[NewIdx].m_aName, pClient->m_aName, sizeof(m_aFriendStates[NewIdx].m_aName));
-				str_copy(m_aFriendStates[NewIdx].m_aClan, pClient->m_aClan, sizeof(m_aFriendStates[NewIdx].m_aClan));
-				m_aFriendStates[NewIdx].m_IsStillOnline = true;
-			}
+			HandleFriendClient(pServerInfo, pClient);
 		}
 	}
+}
 
-	// 4. 清理与下线提醒阶段
+void CMClient::HandleFriendClient(const CServerInfo *pServerInfo, const CServerInfo::CClient *pClient)
+{
+	// 在现有列表中查找该好友
+	int FoundIndex = FindFriendInList(pClient);
+	
+	if(FoundIndex >= 0)
+	{
+		// 已在列表中，更新状态为在线
+		m_aFriendStates[FoundIndex].m_IsStillOnline = true;
+	}
+	else if(m_NumFriendStates < IFriends::MAX_FRIENDS)
+	{
+		// 发现新上线的好友！
+		OnFriendJoin(pServerInfo, pClient);
+		
+		int NewIdx = m_NumFriendStates++;
+		str_copy(m_aFriendStates[NewIdx].m_aName, pClient->m_aName, sizeof(m_aFriendStates[NewIdx].m_aName));
+		str_copy(m_aFriendStates[NewIdx].m_aClan, pClient->m_aClan, sizeof(m_aFriendStates[NewIdx].m_aClan));
+		m_aFriendStates[NewIdx].m_IsStillOnline = true;
+	}
+}
+
+int CMClient::FindFriendInList(const CServerInfo::CClient *pClient) const
+{
+	for(int k = 0; k < m_NumFriendStates; k++)
+	{
+		if(str_comp(m_aFriendStates[k].m_aName, pClient->m_aName) == 0 &&
+		   str_comp(m_aFriendStates[k].m_aClan, pClient->m_aClan) == 0)
+		{
+			return k;
+		}
+	}
+	return -1;
+}
+
+void CMClient::AddFriendToList(const CServerInfo::CClient *pClient)
+{
+	SFriendState& newState = m_aFriendStates[m_NumFriendStates++];
+	str_copy(newState.m_aName, pClient->m_aName, sizeof(newState.m_aName));
+	str_copy(newState.m_aClan, pClient->m_aClan, sizeof(newState.m_aClan));
+	newState.m_IsStillOnline = true;
+}
+
+void CMClient::ProcessOfflineFriends()
+{
 	for(int i = 0; i < m_NumFriendStates; i++)
 	{
 		if(!m_aFriendStates[i].m_IsStillOnline)
 		{
-			// 触发下线提醒
-			OnFriendLeave(m_aFriendStates[i].m_aName, m_aFriendStates[i].m_aClan);
+			// 触发下线提醒（如果启用）
+			if(g_Config.m_McFriendNotifyOffline)
+				OnFriendLeave(m_aFriendStates[i].m_aName, m_aFriendStates[i].m_aClan);
 
 			// 从数组中移除（用末尾元素覆盖当前位置）
-			if(m_NumFriendStates > 1)
-				m_aFriendStates[i] = m_aFriendStates[m_NumFriendStates - 1];
-			
-			m_NumFriendStates--;
+			RemoveFriendFromList(i);
 			i--; // 重新检查当前索引位置
 		}
 	}
 }
+
+void CMClient::RemoveFriendFromList(int Index)
+{
+	if(m_NumFriendStates > 1)
+		m_aFriendStates[Index] = m_aFriendStates[m_NumFriendStates - 1];
+	
+	m_NumFriendStates--;
+}
+
 void CMClient::OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::CClient *pFriendClient)
 {
 	if(!pServerInfo || !pFriendClient)
@@ -104,36 +138,61 @@ void CMClient::OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::C
 
 	// 发送通知到聊天框
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "+++ 好友 [%s] 已上线 | 位置: %s", pFriendName, pServerInfo->m_aName);
+	str_format(aBuf, sizeof(aBuf), "[%s] 已上线", pFriendName);
 	GameClient()->m_Chat.Echo(aBuf);
 
-	// 如果启用了自动打招呼功能
+	// 如果启用了自动打招呼功能，且好友在当前服务器
 	if(g_Config.m_McFriendAutoGreet)
 	{
-		// 准备打招呼文本
-		char aGreetText[256];
-		str_copy(aGreetText, g_Config.m_McFriendAutoGreetText, sizeof(aGreetText));
-
-		// 替换 {name} 为好友名字
-		const char *pPos = str_find(aGreetText, "{name}");
-		if(pPos)
+		if(IsFriendInCurrentServer(pServerInfo))
 		{
-			char aNewGreetText[256];
-			int PrefixLen = pPos - aGreetText;
-			str_copy(aNewGreetText, aGreetText, PrefixLen + 1);
-			str_append(aNewGreetText, pFriendName, sizeof(aNewGreetText));
-			str_append(aNewGreetText, pPos + str_length("{name}"), sizeof(aNewGreetText));
-			str_copy(aGreetText, aNewGreetText, sizeof(aGreetText));
+			SendGreetingMessage(pFriendName);
 		}
-
-		// 发送打招呼消息
-		GameClient()->m_Chat.SendChat(0, aGreetText);
 	}
+}
+
+bool CMClient::IsFriendInCurrentServer(const CServerInfo *pFriendServerInfo) const
+{
+	// 获取当前服务器信息
+	CServerInfo CurrentServerInfo;
+	Client()->GetServerInfo(&CurrentServerInfo);
+
+	// 检查是否是当前服务器（比较地址）
+	for(int i = 0; i < pFriendServerInfo->m_NumAddresses && i < CurrentServerInfo.m_NumAddresses; i++)
+	{
+		if(net_addr_comp(&pFriendServerInfo->m_aAddresses[i], &CurrentServerInfo.m_aAddresses[i]) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void CMClient::SendGreetingMessage(const char *pFriendName)
+{
+	// 准备打招呼文本
+	char aGreetText[256];
+	str_copy(aGreetText, g_Config.m_McFriendAutoGreetText, sizeof(aGreetText));
+
+	// 替换 {name} 为好友名字
+	const char *pPos = str_find(aGreetText, "{name}");
+	if(pPos)
+	{
+		char aNewGreetText[256];
+		int PrefixLen = pPos - aGreetText;
+		str_copy(aNewGreetText, aGreetText, PrefixLen + 1);
+		str_append(aNewGreetText, pFriendName, sizeof(aNewGreetText));
+		str_append(aNewGreetText, pPos + str_length("{name}"), sizeof(aNewGreetText));
+		str_copy(aGreetText, aNewGreetText, sizeof(aGreetText));
+	}
+
+	// 发送打招呼消息
+	GameClient()->m_Chat.SendChat(0, aGreetText);
 }
 
 void CMClient::OnFriendLeave(const char *pName, const char *pClan)
 {
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "--- 好友 [%s] 已下线或离开服务器", pName);
+	str_format(aBuf, sizeof(aBuf), "[%s] 已下线或离开服务器", pName);
 	GameClient()->m_Chat.Echo(aBuf);
 }
