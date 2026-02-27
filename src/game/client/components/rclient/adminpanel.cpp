@@ -6,6 +6,8 @@
 #include <game/client/ui.h>
 #include <generated/protocol.h>
 
+#include "engine/font_icons.h"
+
 #include <game/client/components/camera.h>
 #include <game/client/components/chat.h>
 #include <game/client/components/console.h>
@@ -399,7 +401,7 @@ void CAdminPanel::RenderPlayerPanelPopUp()
 			UpperButton.Draw(SAdminPanelProperties::WindowColor(), IGraphics::CORNER_TR, SAdminPanelProperties::ms_Rounding);
 		else
 			UpperButton.Draw(SAdminPanelProperties::WindowColor(), IGraphics::CORNER_TR, SAdminPanelProperties::ms_Rounding);
-		DoIconButton(&UpperButton, !m_PlayerList.m_Active ? FontIcons::FONT_ICON_CHEVRON_RIGHT : FontIcons::FONT_ICON_CHEVRON_LEFT, SAdminPanelProperties::ms_IconFontSize * (Hovered(&UpperButton) ? 1.2 : 1), TextRender()->DefaultTextColor());
+		DoIconButton(&UpperButton, !m_PlayerList.m_Active ? FontIcon::CHEVRON_RIGHT : FontIcon::CHEVRON_LEFT, SAdminPanelProperties::ms_IconFontSize * (Hovered(&UpperButton) ? 1.2 : 1), TextRender()->DefaultTextColor());
 		if(DoButtonLogic(&UpperButton))
 		{
 			m_ReadyButtons = 0;
@@ -409,7 +411,7 @@ void CAdminPanel::RenderPlayerPanelPopUp()
 			LowerButton.Draw(SAdminPanelProperties::WindowColorDark(), IGraphics::CORNER_BR, SAdminPanelProperties::ms_Rounding);
 		else
 			LowerButton.Draw(SAdminPanelProperties::WindowColorDark(), IGraphics::CORNER_BR, SAdminPanelProperties::ms_Rounding);
-		DoIconButton(&LowerButton, !m_PlayerList.m_Active ? FontIcons::FONT_ICON_CHEVRON_RIGHT : FontIcons::FONT_ICON_CHEVRON_LEFT, SAdminPanelProperties::ms_IconFontSize * (Hovered(&LowerButton) ? 1.2 : 1), TextRender()->DefaultTextColor());
+		DoIconButton(&LowerButton, !m_PlayerList.m_Active ? FontIcon::CHEVRON_RIGHT : FontIcon::CHEVRON_LEFT, SAdminPanelProperties::ms_IconFontSize * (Hovered(&LowerButton) ? 1.2 : 1), TextRender()->DefaultTextColor());
 		if(DoButtonLogic(&LowerButton))
 		{
 			m_ReadyButtons = 1;
@@ -456,12 +458,12 @@ void CAdminPanel::RenderPlayerPanelPopUpActionButtons(CUIRect *pBase)
 	if(Hovered(&Action))
 	{
 		Action.Draw(m_ChosenActionButton == 1 ? SAdminPanelProperties::ActionKillAltButtonColor() : SAdminPanelProperties::ActionKillButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "kill", FontIcons::FONT_ICON_SCULL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "kill", FontIcon::RC_SCULL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	else
 	{
 		Action.Draw(m_ChosenActionButton == 1 ? SAdminPanelProperties::ActionKillButtonColor() : SAdminPanelProperties::ActionKillAltButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "kill", FontIcons::FONT_ICON_SCULL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "kill", FontIcon::RC_SCULL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	if(DoButtonLogic(&Action))
 	{
@@ -478,12 +480,12 @@ void CAdminPanel::RenderPlayerPanelPopUpActionButtons(CUIRect *pBase)
 	if(Hovered(&Action))
 	{
 		Action.Draw(m_ChosenActionButton == 2 ? SAdminPanelProperties::ActionKickAltButtonColor() : SAdminPanelProperties::ActionKickButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "kick", FontIcons::FONT_ICON_DOOR_OPEN, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "kick", FontIcon::RC_DOOR_OPEN, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	else
 	{
 		Action.Draw(m_ChosenActionButton == 2 ? SAdminPanelProperties::ActionKickButtonColor() : SAdminPanelProperties::ActionKickAltButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "kick", FontIcons::FONT_ICON_DOOR_OPEN, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "kick", FontIcon::RC_DOOR_OPEN, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	if(DoButtonLogic(&Action))
 	{
@@ -500,12 +502,12 @@ void CAdminPanel::RenderPlayerPanelPopUpActionButtons(CUIRect *pBase)
 	if(Hovered(&Action))
 	{
 		Action.Draw(m_ChosenActionButton == 3 ? SAdminPanelProperties::ActionMuteAltButtonColor() : SAdminPanelProperties::ActionMuteButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "mute", FontIcons::FONT_ICON_COMMENT_SLASH, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "mute", FontIcon::COMMENT_SLASH, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	else
 	{
 		Action.Draw(m_ChosenActionButton == 3 ? SAdminPanelProperties::ActionMuteButtonColor() : SAdminPanelProperties::ActionMuteAltButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "mute", FontIcons::FONT_ICON_COMMENT_SLASH, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "mute", FontIcon::COMMENT_SLASH, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	if(DoButtonLogic(&Action))
 	{
@@ -522,12 +524,12 @@ void CAdminPanel::RenderPlayerPanelPopUpActionButtons(CUIRect *pBase)
 	if(Hovered(&Action))
 	{
 		Action.Draw(m_ChosenActionButton == 4 ? SAdminPanelProperties::ActionBanAltButtonColor() : SAdminPanelProperties::ActionBanButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "local ban", FontIcons::FONT_ICON_GAVEL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "local ban", FontIcon::RC_GAVEL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	else
 	{
 		Action.Draw(m_ChosenActionButton == 4 ? SAdminPanelProperties::ActionBanButtonColor() : SAdminPanelProperties::ActionBanAltButtonColor(), IGraphics::CORNER_ALL, SAdminPanelProperties::ms_Rounding);
-		DoIconLabeledButtonDown(&Action, "local ban", FontIcons::FONT_ICON_GAVEL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
+		DoIconLabeledButtonDown(&Action, "local ban", FontIcon::RC_GAVEL, SAdminPanelProperties::ms_IconFontSize, SAdminPanelProperties::ms_FontSize, 18.0f, 0.0f, TextRender()->DefaultTextColor());
 	}
 	if(DoButtonLogic(&Action))
 	{
@@ -996,7 +998,7 @@ void CAdminPanel::RenderPlayerPanelPlayersList()
 		OneButton.Draw(SAdminPanelProperties::WindowColorDark(), IGraphics::CORNER_R, SAdminPanelProperties::ms_Rounding);
 	else
 		OneButton.Draw(SAdminPanelProperties::WindowColorDark(), IGraphics::CORNER_R, SAdminPanelProperties::ms_Rounding);
-	DoIconButton(&OneButton, !m_PlayerList.m_Active ? FontIcons::FONT_ICON_CHEVRON_RIGHT : FontIcons::FONT_ICON_CHEVRON_LEFT, SAdminPanelProperties::ms_IconFontSize * (Hovered(&OneButton) ? 1.2 : 1), TextRender()->DefaultTextColor());
+	DoIconButton(&OneButton, !m_PlayerList.m_Active ? FontIcon::CHEVRON_RIGHT : FontIcon::CHEVRON_LEFT, SAdminPanelProperties::ms_IconFontSize * (Hovered(&OneButton) ? 1.2 : 1), TextRender()->DefaultTextColor());
 	if(DoButtonLogic(&OneButton))
 	{
 		m_PlayerList.m_Active = !m_PlayerList.m_Active;

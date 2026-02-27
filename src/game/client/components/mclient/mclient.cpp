@@ -12,11 +12,14 @@ CMClient::CMClient()
 	m_LastCloneTick = 0;
 	m_LastClonedClientId = -1;
 	m_RainbowDelay = 0;
+	m_LastFriendRefreshTime = 0.0f;
+	m_NumFriendStates = 0;
+	mem_zero(m_aFriendStates, sizeof(m_aFriendStates));
 }
 
 void CMClient::OnInit()
 {
-	// 初始化逻辑
+	UpdateFriendList();
 }
 
 void CMClient::OnConsoleInit()
@@ -31,6 +34,9 @@ void CMClient::OnRender()
 
 	// 更新彩虹Tee颜色
 	UpdateRainbow();
+
+	// 检查好友上线提醒
+	CheckFriendNotification();
 
 	if(!g_Config.m_McRandomSkinRotate || Client()->State() != IClient::STATE_ONLINE)
 		return;

@@ -9,6 +9,7 @@
 
 #include <base/color.h>
 
+#include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
@@ -364,8 +365,7 @@ void CHud::RenderScoreHud()
 							int64_t TimeSeconds = static_cast<int64_t>(absolute(ClientData.m_FinishTimeSeconds));
 							int64_t TimeMillis = TimeSeconds * 1000 + (absolute(ClientData.m_FinishTimeMillis) % 1000);
 
-							// show centiseconds if we are under an hour
-							str_time(TimeMillis / 10, TimeSeconds < 60 * 60 ? TIME_MINS_CENTISECS : TIME_HOURS, aScore[t], sizeof(aScore[t]));
+							str_time(TimeMillis / 10, TIME_HOURS, aScore[t], sizeof(aScore[t]));
 						}
 						else if(apPlayerInfo[t]->m_Score != FinishTime::NOT_FINISHED_TIMESCORE)
 						{
@@ -689,7 +689,29 @@ void CHud::RenderTextInfo()
 
 		if(g_Config.m_TcShowFrozenHud > 0 && !GameClient()->m_Scoreboard.IsActive() && !(LocalTeamID == 0 && g_Config.m_TcFrozenHudTeamOnly))
 		{
-			CTeeRenderInfo FreezeInfo;
+			const bool FilterWarlistTeamOnly = g_Config.m_RiFrozenHudWarlistTeamOnly != 0;
+			constexpr int WarlistTeamGroupIndex = 2;
+			auto IsShownInFrozenHud = [&](int ClientId) {
+				if(!FilterWarlistTeamOnly)
+					return true;
+				const auto &WarData = GameClient()->m_WarList.GetWarData(ClientId);
+				return static_cast<int>(WarData.m_WarGroupMatches.size()) > WarlistTeamGroupIndex && WarData.m_WarGroupMatches[WarlistTeamGroupIndex];
+			};
+
+			int NumInTeamHud = 0;
+			for(int i = 0; i < MAX_CLIENTS; i++)
+			{
+				if(!GameClient()->m_Snap.m_apPlayerInfos[i])
+					continue;
+				if(GameClient()->m_Teams.Team(i) != LocalTeamID)
+					continue;
+				if(!IsShownInFrozenHud(i))
+					continue;
+				NumInTeamHud++;
+			}
+			if(NumInTeamHud > 0)
+			{
+				CTeeRenderInfo FreezeInfo;
 			const CSkin *pSkin = GameClient()->m_Skins.Find("x_ninja");
 			FreezeInfo.m_OriginalRenderSkin = pSkin->m_OriginalSkin;
 			FreezeInfo.m_ColorableRenderSkin = pSkin->m_ColorableSkin;
@@ -707,14 +729,14 @@ void CHud::RenderTextInfo()
 			int MaxRows = g_Config.m_TcFrozenMaxRows;
 			float StartPos = (m_Width / 2.0f + 38.0f * (m_Width / m_Height) / 1.78f) * ((g_Config.m_RiFrozenHudPosX + 50.0f) / 100.0f);
 
-			int TotalRows = std::min(MaxRows, (NumInTeam + MaxTees - 1) / MaxTees);
+			int TotalRows = std::min(MaxRows, (NumInTeamHud + MaxTees - 1) / MaxTees);
 			Graphics()->TextureClear();
 			Graphics()->QuadsBegin();
 			Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.4f);
-			Graphics()->DrawRectExt(StartPos - TeeSize / 2.0f, 0.0f, TeeSize * std::min(NumInTeam, MaxTees), TeeSize + 3.0f + (TotalRows - 1) * TeeSize, 5.0f, IGraphics::CORNER_B);
+			Graphics()->DrawRectExt(StartPos - TeeSize / 2.0f, 0.0f, TeeSize * std::min(NumInTeamHud, MaxTees), TeeSize + 3.0f + (TotalRows - 1) * TeeSize, 5.0f, IGraphics::CORNER_B);
 			Graphics()->QuadsEnd();
 
-			bool Overflow = NumInTeam > MaxTees * MaxRows;
+			bool Overflow = NumInTeamHud > MaxTees * MaxRows;
 
 			int NumDisplayed = 0;
 			int NumInRow = 0;
@@ -728,6 +750,9 @@ void CHud::RenderTextInfo()
 						continue;
 					if(GameClient()->m_Teams.Team(i) == LocalTeamID)
 					{
+						if(!IsShownInFrozenHud(i))
+							continue;
+
 						bool Frozen = false;
 						CTeeRenderInfo TeeInfo = GameClient()->m_aClients[i].m_RenderInfo;
 						if(GameClient()->m_aClients[i].m_FreezeEnd > 0 || GameClient()->m_aClients[i].m_DeepFrozen)
@@ -775,6 +800,7 @@ void CHud::RenderTextInfo()
 						ProgressiveOffset += TeeSize;
 					}
 				}
+			}
 			}
 		}
 	}
@@ -1540,7 +1566,7 @@ void CHud::RenderSpectatorCount()
 	float x = StartX + 2;
 
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-	TextRender()->Text(x, y, Fontsize, FontIcons::FONT_ICON_EYE, -1.0f);
+	TextRender()->Text(x, y, Fontsize, FontIcon::EYE, -1.0f);
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 	TextRender()->Text(x + Fontsize + 3.f, y, Fontsize, aBuf, -1.0f);
 }
@@ -1951,7 +1977,7 @@ void CHud::RenderSpectatorHud()
 		Graphics()->DrawRect(TagX, m_Height - 12.0f, TagWidth, 10.0f, ColorRGBA(1.0f, 1.0f, 1.0f, AutoSpecCameraEnabled ? 0.50f : 0.10f), IGraphics::CORNER_ALL, 2.5f);
 		TextRender()->TextColor(1, 1, 1, AutoSpecCameraEnabled ? 1.0f : 0.65f);
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-		TextRender()->Text(TagX + Padding, m_Height - 10.0f, 6.0f, FontIcons::FONT_ICON_CAMERA, -1.0f);
+		TextRender()->Text(TagX + Padding, m_Height - 10.0f, 6.0f, FontIcon::CAMERA, -1.0f);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 		TextRender()->Text(TagX + Padding + IconWidth + Padding, m_Height - 10.0f, 6.0f, pLabelText, -1.0f);
 		TextRender()->TextColor(1, 1, 1, 1);
@@ -1999,7 +2025,7 @@ void CHud::RenderVoiceIndicator()
 
 	Graphics()->DrawRect(X, Y, BoxWidth, BoxHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_ALL, 3.0f);
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-	TextRender()->Text(X + Padding, Y + (BoxHeight - FontSize) / 2.0f, FontSize, FontIcons::FONT_ICON_MICROPHONE, -1.0f);
+	TextRender()->Text(X + Padding, Y + (BoxHeight - FontSize) / 2.0f, FontSize, FontIcon::RC_MICROPHONE, -1.0f);
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 }
 

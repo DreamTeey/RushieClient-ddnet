@@ -55,6 +55,8 @@ class CGameConsole : public CComponent
 		bool m_MouseIsPress = false;
 		vec2 m_MousePress = vec2(0.0f, 0.0f);
 		vec2 m_MouseRelease = vec2(0.0f, 0.0f);
+		bool m_ScrollbarDragging = false;
+		float m_ScrollbarDragOffset = 0.0f;
 		int m_CurSelStart = 0;
 		int m_CurSelEnd = 0;
 		bool m_HasSelection = false;
@@ -115,6 +117,7 @@ class CGameConsole : public CComponent
 
 		bool OnInput(const IInput::CEvent &Event);
 		void PrintLine(const char *pLine, int Len, ColorRGBA PrintColor) REQUIRES(!m_BacklogPendingLock);
+		int TotalBacklogLines();
 		int GetLinesToScroll(int Direction, int LinesToScroll);
 		void ScrollToCenter(int StartLine, int EndLine);
 		void Dump() REQUIRES(!m_BacklogPendingLock);

@@ -42,6 +42,9 @@ MACRO_CONFIG_STR(RiVoiceServer, ri_voice_server, 128, "server.rushie-client.ru:5
 MACRO_CONFIG_STR(RiVoiceInputDevice, ri_voice_input_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice input device name (empty = default)")
 MACRO_CONFIG_STR(RiVoiceOutputDevice, ri_voice_output_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice output device name (empty = default)")
 MACRO_CONFIG_INT(RiVoiceStereo, ri_voice_stereo, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice output stereo (0=mono, 1=stereo)")
+MACRO_CONFIG_INT(RiVoiceStereoWidth, ri_voice_stereo_width, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice stereo width (percent)")
+MACRO_CONFIG_STR(RiVoiceToken, ri_voice_token, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice relay token (optional)")
+MACRO_CONFIG_INT(RiVoiceGroupMode, ri_voice_group_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice group mode (0=all/all, 1=group/group, 2=all->group, 3=group->all)")
 MACRO_CONFIG_INT(RiVoiceFilterEnable, ri_voice_filter_enable, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable voice HPF/compressor/limiter")
 MACRO_CONFIG_INT(RiVoiceCompThreshold, ri_voice_comp_threshold, 20, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice compressor threshold (percent)")
 MACRO_CONFIG_INT(RiVoiceCompRatio, ri_voice_comp_ratio, 25, 10, 80, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice compressor ratio (x10)")
@@ -52,6 +55,7 @@ MACRO_CONFIG_INT(RiVoiceLimiter, ri_voice_limiter, 50, 10, 100, CFGFLAG_CLIENT |
 MACRO_CONFIG_INT(RiVoiceRadius, ri_voice_radius, 50, 1, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice radius in tiles")
 MACRO_CONFIG_INT(RiVoiceVolume, ri_voice_volume, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice volume in percent")
 MACRO_CONFIG_INT(RiVoiceIgnoreDistance, ri_voice_ignore_distance, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ignore distance attenuation for voice chat")
+MACRO_CONFIG_INT(RiVoiceGroupGlobal, ri_voice_group_global, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hear group members everywhere (ignore distance for same group)")
 MACRO_CONFIG_INT(RiVoiceListMode, ri_voice_list_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice list mode (0=off, 1=whitelist, 2=blacklist)")
 MACRO_CONFIG_STR(RiVoiceWhitelist, ri_voice_whitelist, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice whitelist (comma-separated names)")
 MACRO_CONFIG_STR(RiVoiceBlacklist, ri_voice_blacklist, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice blacklist (comma-separated names)")
@@ -63,10 +67,7 @@ MACRO_CONFIG_INT(RiVoiceDebug, ri_voice_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 MACRO_CONFIG_INT(RiVoiceShowWhenActive, ri_voice_show_when_active, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice chat indicator when active")
 
 //Controls
-MACRO_CONFIG_INT(RiPrevMouseMaxDistance45degrees, ri_prev_mouse_max_distance_45_degrees, 400, 0, 5000, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Previous maximum cursor distance for 45 degrees")
-MACRO_CONFIG_INT(RiPrevInpMousesens45degrees, ri_prev_inp_mousesens_45_degrees, 200, 1, 100000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Previous mouse sensitivity for 45 degrees")
 MACRO_CONFIG_INT(RiToggle45degrees, ri_toggle_45_degrees, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle 45 degrees bind or not")
-MACRO_CONFIG_INT(RiPrevInpMousesensSmallsens, ri_prev_inp_mousesens_small_sens, 200, 1, 100000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Previous mouse sensitivity for small sens")
 MACRO_CONFIG_INT(RiToggleSmallSens, ri_toggle_small_sens, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle small sens bind or not")
 
 //Hud
@@ -98,6 +99,7 @@ MACRO_CONFIG_INT(RiIndicatorTransparentOffsetMax, ri_indicator_transparent_offse
 MACRO_CONFIG_INT(RiIndicatorTransparentToggle, ri_indicator_transparent_toggle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle player indicator transparent")
 MACRO_CONFIG_INT(RiIndicatorTransparentMin, ri_indicator_transparent_min, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Minimal transparent when offset max reached")
 MACRO_CONFIG_INT(RiFrozenHudPosX, ri_frozen_hud_pos_x, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Change frozen hud pos x")
+MACRO_CONFIG_INT(RiFrozenHudWarlistTeamOnly, ri_frozen_hud_warlist_team_only, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show frozen HUD only for players in warlist team group")
 MACRO_CONFIG_INT(RiColorFreezeNoYourself, ri_color_freeze_no_yourself, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Don't use color skin in freeze for yourself")
 
 
@@ -131,6 +133,8 @@ MACRO_CONFIG_INT(RiBrFilterPlayers, ri_br_filter_players, 0, 0, 1, CFGFLAG_CLIEN
 
 //RClient Nameplates
 MACRO_CONFIG_INT(RiShowRclientIndicator, ri_show_rclient_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Rclient player indicator in nameplates")
+MACRO_CONFIG_STR(RiRclientIndicatorUsersUrl, ri_rclient_indicator_users_url, 256, "https://server.rushie-client.ru/users.json", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rclient indicator users URL")
+MACRO_CONFIG_STR(RiRclientIndicatorTokenUrl, ri_rclient_indicator_token_url, 256, "https://server.rushie-client.ru/token", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rclient indicator token URL")
 
 //Config tab
 MACRO_CONFIG_INT(RiUiShowRClient, ri_ui_show_rclient, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show RClient domain in Configs tab")
@@ -150,3 +154,6 @@ MACRO_CONFIG_INT(RiShowFrozenFlakes, ri_show_frozen_flakes, 1, 0, 1, CFGFLAG_CLI
 MACRO_CONFIG_INT(RiShowHammerHit, ri_show_hammer_hit, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show hammer hits(0-NoEffect, 1-Normal, 2-NoSound)")
 MACRO_CONFIG_INT(RiPlayOnMoveNonInactive, ri_play_on_move_nonactive, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play sound when someone moves u when u inactive")
 MACRO_CONFIG_INT(RiSoundOnMoveNonInactive, ri_sound_on_move_nonactive, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Choose sound when inactive (0-WakeUp, 1-Grenade boom, 2-msg tag")
+
+//Fastinput
+MACRO_CONFIG_INT(RiFastInputVersion, ri_fast_input_version, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Choose fastinput version (0-Tater's old, 1-Tater's new)")
