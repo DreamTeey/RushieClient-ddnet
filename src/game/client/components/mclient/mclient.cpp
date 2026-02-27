@@ -207,42 +207,73 @@ bool CMClient::CheckDistanceClone(const vec2& LocalPos, int& TargetId)
 
 void CMClient::CopyPlayerSkin(int TargetId, bool IsDummy)
 {
-	CGameClient::CClientData *pTarget = &GameClient()->m_aClients[TargetId];
-	
-	// 复制基本信息
-	if(g_Config.m_McCloneCopyName)
-	{
-		if(IsDummy)
-		{
-			str_copy(g_Config.m_ClDummyName, pTarget->m_aName, sizeof(g_Config.m_ClDummyName));
-			g_Config.m_ClDummyCountry = pTarget->m_Country;
-			str_copy(g_Config.m_ClDummyClan, pTarget->m_aClan, sizeof(g_Config.m_ClDummyClan));
-		}
-		else
-		{
-			str_copy(g_Config.m_PlayerName, pTarget->m_aName, sizeof(g_Config.m_PlayerName));
-			g_Config.m_PlayerCountry = pTarget->m_Country;
-			str_copy(g_Config.m_PlayerClan, pTarget->m_aClan, sizeof(g_Config.m_PlayerClan));
-		}
-	}
+    CGameClient::CClientData *pTarget = &GameClient()->m_aClients[TargetId];
+    bool Changed = false;
 
-	// 复制皮肤信息
-	if(IsDummy)
-	{
-		str_copy(g_Config.m_ClDummySkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClDummySkin));
-		g_Config.m_ClDummyUseCustomColor = pTarget->m_UseCustomColor;
-		g_Config.m_ClDummyColorBody = pTarget->m_ColorBody;
-		g_Config.m_ClDummyColorFeet = pTarget->m_ColorFeet;
-	}
-	else
-	{
-		str_copy(g_Config.m_ClPlayerSkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClPlayerSkin));
-		g_Config.m_ClPlayerUseCustomColor = pTarget->m_UseCustomColor;
-		g_Config.m_ClPlayerColorBody = pTarget->m_ColorBody;
-		g_Config.m_ClPlayerColorFeet = pTarget->m_ColorFeet;
-	}
+    // 1. 判断并复制基本信息 (Name, Country, Clan)
+    if(g_Config.m_McCloneCopyName)
+    {
+        if(IsDummy)
+        {
+            if(str_comp(g_Config.m_ClDummyName, pTarget->m_aName) != 0 ||
+               g_Config.m_ClDummyCountry != pTarget->m_Country ||
+               str_comp(g_Config.m_ClDummyClan, pTarget->m_aClan) != 0)
+            {
+                str_copy(g_Config.m_ClDummyName, pTarget->m_aName, sizeof(g_Config.m_ClDummyName));
+                g_Config.m_ClDummyCountry = pTarget->m_Country;
+                str_copy(g_Config.m_ClDummyClan, pTarget->m_aClan, sizeof(g_Config.m_ClDummyClan));
+                Changed = true;
+            }
+        }
+        else
+        {
+            if(str_comp(g_Config.m_PlayerName, pTarget->m_aName) != 0 ||
+               g_Config.m_PlayerCountry != pTarget->m_Country ||
+               str_comp(g_Config.m_PlayerClan, pTarget->m_aClan) != 0)
+            {
+                str_copy(g_Config.m_PlayerName, pTarget->m_aName, sizeof(g_Config.m_PlayerName));
+                g_Config.m_PlayerCountry = pTarget->m_Country;
+                str_copy(g_Config.m_PlayerClan, pTarget->m_aClan, sizeof(g_Config.m_PlayerClan));
+                Changed = true;
+            }
+        }
+    }
 
-	SendSkinUpdate(IsDummy);
+    // 2. 判断并复制皮肤信息 (Skin, Colors)
+    if(IsDummy)
+    {
+        if(str_comp(g_Config.m_ClDummySkin, pTarget->m_aSkinName) != 0 ||
+           g_Config.m_ClDummyUseCustomColor != pTarget->m_UseCustomColor ||
+           g_Config.m_ClDummyColorBody != pTarget->m_ColorBody ||
+           g_Config.m_ClDummyColorFeet != pTarget->m_ColorFeet)
+        {
+            str_copy(g_Config.m_ClDummySkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClDummySkin));
+            g_Config.m_ClDummyUseCustomColor = pTarget->m_UseCustomColor;
+            g_Config.m_ClDummyColorBody = pTarget->m_ColorBody;
+            g_Config.m_ClDummyColorFeet = pTarget->m_ColorFeet;
+            Changed = true;
+        }
+    }
+    else
+    {
+        if(str_comp(g_Config.m_ClPlayerSkin, pTarget->m_aSkinName) != 0 ||
+           g_Config.m_ClPlayerUseCustomColor != pTarget->m_UseCustomColor ||
+           g_Config.m_ClPlayerColorBody != pTarget->m_ColorBody ||
+           g_Config.m_ClPlayerColorFeet != pTarget->m_ColorFeet)
+        {
+            str_copy(g_Config.m_ClPlayerSkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClPlayerSkin));
+            g_Config.m_ClPlayerUseCustomColor = pTarget->m_UseCustomColor;
+            g_Config.m_ClPlayerColorBody = pTarget->m_ColorBody;
+            g_Config.m_ClPlayerColorFeet = pTarget->m_ColorFeet;
+            Changed = true;
+        }
+    }
+
+    // 3. 只有当信息确实发生变化时才发送更新
+    if(Changed)
+    {
+        SendSkinUpdate(IsDummy);
+    }
 }
 
 void CMClient::SendSkinUpdate(bool IsDummy)
