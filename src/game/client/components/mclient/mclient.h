@@ -24,6 +24,7 @@ public:
 	void CheckFriendNotification();
 	void UpdateFriendList();
 	void OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::CClient *pFriendClient);	
+	void OnFriendLeave(const char *pName, const char *pClan);
 	// 颜色转换函数
 	int getIntFromColor(float Hue, float Sat, float LhT)
 	{
