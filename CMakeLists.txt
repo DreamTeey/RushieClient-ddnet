@@ -2606,6 +2606,7 @@ if(CLIENT)
     components/rclient/voice.h
     components/mclient/mclient.cpp
     components/mclient/mclient.h
+    components/mclient/mclient_friend.cpp
     components/mclient/menus_mclient.cpp
     components/scoreboard.cpp
     components/scoreboard.h

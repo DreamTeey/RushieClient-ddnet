@@ -2,6 +2,8 @@
 #define GAME_CLIENT_COMPONENTS_MCLIENT_MCLIENT_H
 
 #include <game/client/component.h>
+#include <engine/friends.h>
+#include <engine/serverbrowser.h>
 
 class CMClient : public CComponent
 {
@@ -16,7 +18,12 @@ public:
 
 	// 克隆人皮肤复制方法
 	void CheckCloneSkin();
-	void UpdateRainbow();	
+	void UpdateRainbow();
+
+	// 好友上线提醒方法
+	void CheckFriendNotification();
+	void UpdateFriendList();
+	void OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::CClient *pFriendClient);	
 	// 颜色转换函数
 	int getIntFromColor(float Hue, float Sat, float LhT)
 	{
@@ -39,7 +46,16 @@ private:
 	int m_LastClonedClientId;
 	int64_t m_RainbowDelay;
 
-
+	// 好友上线提醒相关
+	float m_LastFriendRefreshTime;
+	struct SFriendState
+	{
+		char m_aName[MAX_NAME_LENGTH];
+		char m_aClan[MAX_CLAN_LENGTH];
+		bool m_IsStillOnline;
+	};
+	SFriendState m_aFriendStates[IFriends::MAX_FRIENDS];
+	int m_NumFriendStates;
 };
 
 #endif

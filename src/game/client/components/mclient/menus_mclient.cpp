@@ -17,12 +17,14 @@
 #include <game/client/components/menu_background.h>
 #include <game/client/components/menus.h>
 #include <game/client/animstate.h>
-#include <game/client/components/menus.h>
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
 #include <game/client/ui_scrollregion.h>
 
 #include <vector>
+
+// 好友打招呼文本输入框
+static CLineInputBuffered<128> s_FriendGreetInput;
 
 enum
 {
@@ -109,6 +111,14 @@ void CMenus::RenderSettingsMClient(CUIRect MainView)
 
 void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
 {
+	// 初始化好友打招呼文本输入框
+	static bool s_FriendGreetInitialized = false;
+	if(!s_FriendGreetInitialized)
+	{
+		s_FriendGreetInput.Set(g_Config.m_McFriendAutoGreetText);
+		s_FriendGreetInitialized = true;
+	}
+
     static CScrollRegion s_ScrollRegion;
     vec2 ScrollOffset(0.0f, 0.0f);
     CScrollRegionParams ScrollParams;
@@ -227,6 +237,39 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
             if(g_Config.m_McRainbowTeeFeet) {
                 DoSubOption(pCol, [&](CUIRect* pRect) {
                     Ui()->DoScrollbarOption(&g_Config.m_McRainbowTeeFeetSpeed, &g_Config.m_McRainbowTeeFeetSpeed, pRect, MCLocalize("速度"), 0, 1000);
+                });
+            }
+        }
+    });
+
+    // ================== 右侧渲染 ==================
+    DoSettingGroup(&RightColumn, MCLocalize("实用功能"), [&](CUIRect* pCol) {
+        // 好友上线提醒
+        DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendNotify, MCLocalize("好友上线提醒"), &g_Config.m_McFriendNotify, pCol, LineSize);
+        pCol->HSplitTop(MarginSmall, nullptr, pCol);
+        if(g_Config.m_McFriendNotify)
+        {
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendNotifyAutoRefresh, MCLocalize("自动刷新服务器列表"), &g_Config.m_McFriendNotifyAutoRefresh, pRect, LineSize);
+            });
+            if(g_Config.m_McFriendNotifyAutoRefresh) {
+                DoSubOption(pCol, [&](CUIRect* pRect) {
+                    Ui()->DoScrollbarOption(&g_Config.m_McFriendNotifyRefreshInterval, &g_Config.m_McFriendNotifyRefreshInterval, pRect, MCLocalize("刷新间隔(秒)"), 10, 300);
+                });
+            }
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendAutoGreet, MCLocalize("好友进图自动打招呼"), &g_Config.m_McFriendAutoGreet, pRect, LineSize);
+            });
+            if(g_Config.m_McFriendAutoGreet) {
+                DoSubOption(pCol, [&](CUIRect* pRect) {
+                    CUIRect Label;
+                    pRect->HSplitTop(LineSize, &Label, pRect);
+                    Label.VSplitLeft(100.0f, &Label, pRect);
+                    Ui()->DoLabel(&Label, MCLocalize("打招呼文本"), 12.0f, TEXTALIGN_ML);
+                    if(Ui()->DoEditBox(&s_FriendGreetInput, pRect, 12.0f))
+                    {
+                        str_copy(g_Config.m_McFriendAutoGreetText, s_FriendGreetInput.GetString(), sizeof(g_Config.m_McFriendAutoGreetText));
+                    }
                 });
             }
         }
