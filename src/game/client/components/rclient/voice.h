@@ -18,6 +18,7 @@
 class CGameClient;
 class IClient;
 class IConsole;
+class IEngineGraphics;
 struct OpusDecoder;
 struct OpusEncoder;
 
@@ -34,8 +35,10 @@ struct SRClientVoiceConfigSnapshot
 	int m_RiVoiceStereoWidth = 0;
 	int m_RiVoiceRadius = 0;
 	int m_RiVoiceVolume = 0;
+	int m_RiVoiceMicVolume = 0;
 	int m_RiVoiceIgnoreDistance = 0;
 	int m_RiVoiceGroupGlobal = 0;
+	int m_RiVoiceVisibilityMode = 0;
 	int m_RiVoiceListMode = 0;
 	int m_RiVoiceDebug = 0;
 	int m_RiVoiceGroupMode = 0;
@@ -96,16 +99,23 @@ class CRClientVoice
 	CGameClient *m_pGameClient = nullptr;
 	IClient *m_pClient = nullptr;
 	IConsole *m_pConsole = nullptr;
+	IEngineGraphics *m_pGraphics = nullptr;
 
 	NETSOCKET m_Socket = nullptr;
 	NETADDR m_ServerAddr = NETADDR_ZEROED;
 	std::atomic<bool> m_ServerAddrValid = false;
 	char m_aServerAddrStr[128] = {0};
+	int64_t m_LastServerResolveAttempt = 0;
 
 	SDL_AudioDeviceID m_CaptureDevice = 0;
 	SDL_AudioDeviceID m_OutputDevice = 0;
 	SDL_AudioSpec m_CaptureSpec = {};
 	SDL_AudioSpec m_OutputSpec = {};
+	char m_aAudioBackend[64] = {0};
+	char m_aAudioBackendMismatchReq[64] = {0};
+	char m_aAudioBackendMismatchCur[64] = {0};
+	char m_aAudioInitLoggedBackend[64] = {0};
+	bool m_AudioSubsystemInitializedByVoice = false;
 	char m_aInputDeviceName[128] = {0};
 	char m_aOutputDeviceName[128] = {0};
 	bool m_OutputStereo = true;
@@ -125,6 +135,7 @@ class CRClientVoice
 	std::array<std::atomic<int64_t>, MAX_CLIENTS> m_aLastHeard = {};
 
 	std::atomic<bool> m_PttActive = false;
+	std::atomic<int64_t> m_PttReleaseDeadline = 0;
 	uint16_t m_Sequence = 0;
 	std::atomic<uint32_t> m_ContextHash = 0;
 	int64_t m_LastKeepalive = 0;
@@ -146,6 +157,7 @@ class CRClientVoice
 	std::array<vec2, MAX_CLIENTS> m_aClientPosSnap = {};
 	std::array<std::array<char, MAX_NAME_LENGTH>, MAX_CLIENTS> m_aClientNameSnap = {};
 	std::array<uint8_t, MAX_CLIENTS> m_aClientOtherTeamSnap = {};
+	std::array<uint8_t, MAX_CLIENTS> m_aClientActiveSnap = {};
 
 	bool EnsureSocket();
 	bool EnsureAudio();
@@ -162,6 +174,7 @@ class CRClientVoice
 	void PushPeerFrame(int PeerId, const int16_t *pPcm, int Samples, float LeftGain, float RightGain);
 	void MixAudio(int16_t *pOut, int Samples, int OutputChannels);
 	void ClearPeerFrames();
+	void ResetPeer(SVoicePeer &Peer);
 	static void SDLAudioCallback(void *pUserData, Uint8 *pStream, int Len);
 	const char *FindDeviceName(bool Capture, const char *pDesired) const;
 	void StartWorker();

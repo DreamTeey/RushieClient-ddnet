@@ -110,9 +110,9 @@ static CBindChat::CBindRclient s_aDefaultBindChatRclientTrackerHistory[] = {
 	{"Tracker player reset", ".trackplayerres", "target_player_pos_reset"},
 };
 static CBindChat::CBindRclient s_aDefaultBindChatRclientVoice[] = {
-	{"Add in blacklist", ".vcwhitelist", "ri_voice_allow"},
-	{"Add in whitelist", ".vcblacklist", "ri_voice_block"},
-	{"Add in mute", ".vcmute", "ri_voice_mute_add"},
-	{"Add in whitelist", ".vcunmute", "ri_voice_mute_remove"},
+	{"Add in whitelist", ".vcwhitelist", "ri_voice_allow"},
+	{"Add in blacklist", ".vcblacklist", "ri_voice_block"},
+	{"Mute", ".vcmute", "ri_voice_mute_add"},
+	{"Unmute", ".vcunmute", "ri_voice_mute_remove"},
 };
 #endif

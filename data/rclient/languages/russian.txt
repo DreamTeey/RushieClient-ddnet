@@ -756,3 +756,18 @@ FastInput version:
 
 Hear group members everywhere
 == Слышать участников группы везде
+
+Microphone volume
+== Громкость микрофона
+
+Off voice when window nonactive
+== Выключать войс когда окно не активно
+
+Audio backend
+== Бекенд звука
+
+If change backend u need restart game
+== Если меняешь бекенд тебе надо перезапустить игру
+
+PTT release delay (ms)
+== PTT задержка после отпускания (мс)
