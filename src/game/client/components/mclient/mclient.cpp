@@ -398,35 +398,38 @@ void CMClient::ConSwitchLastWeaponCallback(IConsole::IResult *pResult, void *pUs
 	pThis->SwitchToLastWeapon();
 }
 
+// 武器切换功能
+bool CMClient::HasWeapon(int Weapon) const
+{
+	int WeaponIndex = Weapon - 1;
+	if(WeaponIndex < 0 || WeaponIndex >= NUM_WEAPONS)
+		return false;
+
+	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
+		return false;
+
+	const CGameClient::CClientData &ClientData = GameClient()->m_aClients[LocalClientId];
+	return ClientData.m_Predicted.m_aWeapons[WeaponIndex].m_Got;
+}
+
 void CMClient::SwitchToLastWeapon()
 {
 	if(Client()->State() != IClient::STATE_ONLINE)
 		return;
 
-	// 获取当前武器
-	int WantedWeapon = GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_WantedWeapon;
-
-	// 切换到上一个武器
+	int CurrentWeapon = GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_WantedWeapon;
 	int LastWeapon = m_aLastWeapon[1 - m_LastWeaponIndex];
-	if(LastWeapon <= 0 || LastWeapon > NUM_WEAPONS)
-		LastWeapon = 1; // 默认锤子
 
-	// 检查是否拥有上一个武器
-	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
-	if(LocalClientId >= 0 && LocalClientId < MAX_CLIENTS)
+	if(LastWeapon <= 0 || LastWeapon > NUM_WEAPONS || !HasWeapon(LastWeapon))
 	{
-		const CGameClient::CClientData &ClientData = GameClient()->m_aClients[LocalClientId];
-		// 武器索引是1-based的，需要转换为0-based
-		int WeaponIndex = LastWeapon - 1;
-		if(WeaponIndex >= 0 && WeaponIndex < NUM_WEAPONS && !(ClientData.m_Predicted.m_aWeapons[WeaponIndex].m_Got))
+		LastWeapon = 1;
+		if(!HasWeapon(LastWeapon))
 			return;
 	}
 
-	// 直接设置武器
 	GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_WantedWeapon = LastWeapon;
-
-	// 更新武器历史
-	UpdateWeaponHistory(WantedWeapon);
+	UpdateWeaponHistory(CurrentWeapon);
 }
 
 void CMClient::UpdateWeaponHistory(int CurrentWeapon)
@@ -434,18 +437,9 @@ void CMClient::UpdateWeaponHistory(int CurrentWeapon)
 	if(CurrentWeapon <= 0 || CurrentWeapon > NUM_WEAPONS)
 		return;
 
-	// 检查是否拥有当前武器
-	int LocalClientId = GameClient()->m_Snap.m_LocalClientId;
-	if(LocalClientId >= 0 && LocalClientId < MAX_CLIENTS)
-	{
-		const CGameClient::CClientData &ClientData = GameClient()->m_aClients[LocalClientId];
-		// 武器索引是1-based的，需要转换为0-based
-		int WeaponIndex = CurrentWeapon - 1;
-		if(WeaponIndex >= 0 && WeaponIndex < NUM_WEAPONS && !(ClientData.m_Predicted.m_aWeapons[WeaponIndex].m_Got))
-			return;
-	}
+	if(!HasWeapon(CurrentWeapon))
+		return;
 
-	// 如果当前武器与上一个记录不同，则更新历史
 	if(m_aLastWeapon[m_LastWeaponIndex] != CurrentWeapon)
 	{
 		m_LastWeaponIndex = 1 - m_LastWeaponIndex;

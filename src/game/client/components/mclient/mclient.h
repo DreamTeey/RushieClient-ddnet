@@ -36,6 +36,7 @@ public:
 	// 武器切换方法
 	void SwitchToLastWeapon();
 	void UpdateWeaponHistory(int CurrentWeapon);
+	bool HasWeapon(int Weapon) const;
 	static void ConSwitchLastWeaponCallback(IConsole::IResult *pResult, void *pUserData);
 
 	// 颜色转换函数
