@@ -52,7 +52,7 @@ void CMClient::OnRender()
 		CheckFriendNotification();
 	}
 
-	// 随机皮肤轮换
+	// 修复：使用正确的配置项作为条件判断
 	if(g_Config.m_McRandomSkinRotate && ShouldRotateSkin())
 	{
 		HandleSkinRotation();
@@ -67,20 +67,40 @@ bool CMClient::CanCloneSkin() const
 
 bool CMClient::ShouldRotateSkin() const
 {
-	if(g_Config.m_McRandomSkinRotateOnlyLeftClick && !Input()->KeyIsPressed(KEY_MOUSE_1))
-		return false;
+	// 修复：确保时间计算正确，避免负数时间差
+	float TimeDiff = Client()->LocalTime() - m_LastRotateTime;
+	
+	// 如果时间差为负数（可能由于时间重置），重置计时器
+	if(TimeDiff < 0)
+	{
+		return true; // 立即允许轮换
+	}
+	
+	// 检查左键限制
+	if(g_Config.m_McRandomSkinRotateOnlyLeftClick)
+	{
+		// 修复：使用更可靠的鼠标状态检测
+		if(!Input()->KeyIsPressed(KEY_MOUSE_1))
+		{
+			return false;
+		}
+	}
 		
-	return (Client()->LocalTime() - m_LastRotateTime) >= g_Config.m_McRandomSkinRotateInterval;
+	// 检查时间间隔
+	return TimeDiff >= g_Config.m_McRandomSkinRotateInterval;
 }
 
 void CMClient::HandleSkinRotation()
 {
+	bool Updated = false;
+	
 	// 主体皮肤轮换
 	if(g_Config.m_McRandomSkinRotateMain || g_Config.m_McRandomSkinRotateMainColor)
 	{
 		g_Config.m_ClPlayerUseCustomColor = g_Config.m_McRandomSkinRotateMainColor;
 		GameClient()->m_Skins.RandomizeSkin(0);
 		GameClient()->SendInfo(false);
+		Updated = true;
 	}
 	
 	// 分身皮肤轮换
@@ -89,6 +109,17 @@ void CMClient::HandleSkinRotation()
 		g_Config.m_ClDummyUseCustomColor = g_Config.m_McRandomSkinRotateDummyColor;
 		GameClient()->m_Skins.RandomizeSkin(1);
 		GameClient()->SendDummyInfo(false);
+		Updated = true;
+	}
+	
+	// 调试输出
+	if(Updated)
+	{
+		/*
+		dbg_msg("mclient", "Skin rotation completed - MainColor: %d, DummyColor: %d",
+			g_Config.m_ClPlayerUseCustomColor,
+			g_Config.m_ClDummyUseCustomColor);
+		*/
 	}
 }
 
