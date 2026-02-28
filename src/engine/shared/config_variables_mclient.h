@@ -35,6 +35,9 @@ MACRO_CONFIG_INT(McRainbowTeeFeetSpeed, mc_rainbow_tee_feet_speed, 50, 0, 100, C
 
 // MClient Utility - 实用功能配置
 
+// 武器快捷切换相关配置：控制最近使用武器的快速切换功能
+MACRO_CONFIG_INT(McWeaponSwitch, mc_weapon_switch, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Weapon quick switch between last two weapons")
+
 // 好友上线提醒相关配置：控制好友上线时的提醒功能
 MACRO_CONFIG_INT(McFriendNotify, mc_friend_notify, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Friend online notification")
 MACRO_CONFIG_INT(McFriendNotifyAutoRefresh, mc_friend_notify_auto_refresh, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto refresh server list for friend notification")

@@ -1,5 +1,6 @@
 #include "mclient.h"
 
+#include <engine/console.h>
 #include <engine/input.h>
 #include <engine/shared/config.h>
 #include <game/client/gameclient.h>
@@ -16,6 +17,11 @@ CMClient::CMClient()
 	m_BodyHue = 0.0f;
 	m_FeetHue = 0.0f;
 	mem_zero(m_aFriendStates, sizeof(m_aFriendStates));
+
+	// 初始化武器历史
+	m_aLastWeapon[0] = 1; // 默认锤子
+	m_aLastWeapon[1] = 2; // 默认枪
+	m_LastWeaponIndex = 0;
 }
 
 void CMClient::OnInit()
@@ -25,7 +31,9 @@ void CMClient::OnInit()
 
 void CMClient::OnConsoleInit()
 {
-	// 控制台初始化逻辑
+	// 注册武器切换命令（支持按键绑定和直接执行）
+	Console()->Register("mc_switch_last_weapon", "", CFGFLAG_CLIENT,
+		ConSwitchLastWeaponCallback, this, "Switch to last used weapon");
 }
 
 void CMClient::OnRender()
@@ -58,6 +66,18 @@ void CMClient::OnRender()
 		HandleSkinRotation();
 		m_LastRotateTime = Client()->LocalTime();
 	}
+
+	// 更新武器历史（只在武器真正改变时更新）
+	static int s_LastWeapon = 0;
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		int CurrentWeapon = GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_WantedWeapon;
+		if(CurrentWeapon > 0 && CurrentWeapon <= NUM_WEAPONS && CurrentWeapon != s_LastWeapon)
+		{
+			UpdateWeaponHistory(CurrentWeapon);
+			s_LastWeapon = CurrentWeapon;
+		}
+	}
 }
 
 bool CMClient::CanCloneSkin() const
@@ -69,13 +89,13 @@ bool CMClient::ShouldRotateSkin() const
 {
 	// 修复：确保时间计算正确，避免负数时间差
 	float TimeDiff = Client()->LocalTime() - m_LastRotateTime;
-	
+
 	// 如果时间差为负数（可能由于时间重置），重置计时器
 	if(TimeDiff < 0)
 	{
 		return true; // 立即允许轮换
 	}
-	
+
 	// 检查左键限制
 	if(g_Config.m_McRandomSkinRotateOnlyLeftClick)
 	{
@@ -85,7 +105,7 @@ bool CMClient::ShouldRotateSkin() const
 			return false;
 		}
 	}
-		
+
 	// 检查时间间隔
 	return TimeDiff >= g_Config.m_McRandomSkinRotateInterval;
 }
@@ -93,7 +113,7 @@ bool CMClient::ShouldRotateSkin() const
 void CMClient::HandleSkinRotation()
 {
 	bool Updated = false;
-	
+
 	// 主体皮肤轮换
 	if(g_Config.m_McRandomSkinRotateMain || g_Config.m_McRandomSkinRotateMainColor)
 	{
@@ -102,7 +122,7 @@ void CMClient::HandleSkinRotation()
 		GameClient()->SendInfo(false);
 		Updated = true;
 	}
-	
+
 	// 分身皮肤轮换
 	if(g_Config.m_McRandomSkinRotateDummy || g_Config.m_McRandomSkinRotateDummyColor)
 	{
@@ -111,7 +131,7 @@ void CMClient::HandleSkinRotation()
 		GameClient()->SendDummyInfo(false);
 		Updated = true;
 	}
-	
+
 	// 调试输出
 	if(Updated)
 	{
@@ -142,7 +162,7 @@ void CMClient::CheckCloneSkin()
 		GameClient()->m_Snap.m_aCharacters[LocalId].m_Cur.m_X,
 		GameClient()->m_Snap.m_aCharacters[LocalId].m_Cur.m_Y
 	);
-	
+
 	bool ShouldClone = false;
 	int TargetId = -1;
 
@@ -187,7 +207,7 @@ bool CMClient::CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId
 	const vec2 ProjStartPos = LocalPos + Dir * HAMMER_RADIUS * 0.75f;
 
 	float MinDistance = 9999.0f;
-	
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(i == LocalId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
@@ -213,7 +233,7 @@ bool CMClient::CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId
 bool CMClient::CheckDistanceClone(const vec2& LocalPos, int& TargetId)
 {
 	float MinDistance = 9999.0f;
-	
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(i == GameClient()->m_Snap.m_LocalClientId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
@@ -328,7 +348,7 @@ void CMClient::UpdateRainbow()
     int OriginalFeetColor = g_Config.m_ClPlayerColorFeet;
     float FeetSat = ((OriginalFeetColor >> 8) & 0xFF) / 255.0f;
     float FeetLht = (OriginalFeetColor & 0xFF) / 255.0f;
-    
+
     // 更新身体色相
     if(g_Config.m_McRainbowTeeBody)
     {
@@ -336,7 +356,7 @@ void CMClient::UpdateRainbow()
         m_BodyHue += BodySpeed;
         if(m_BodyHue > 1.0f) m_BodyHue -= 1.0f;
     }
-    
+
     // 更新脚部色相
     if(g_Config.m_McRainbowTeeFeet)
     {
@@ -364,10 +384,49 @@ void CMClient::UpdateRainbow()
         if(m_RainbowDelay < time_get())
         {
 			if(g_Config.m_ClPlayerUseCustomColor)
-            	GameClient()->SendInfo(false);	
+            	GameClient()->SendInfo(false);
         	if(g_Config.m_ClDummyUseCustomColor)
             	GameClient()->SendDummyInfo(false);
             m_RainbowDelay = time_get() + time_freq() * g_Config.m_SvInfoChangeDelay;
         }
     }
+}
+
+void CMClient::ConSwitchLastWeaponCallback(IConsole::IResult *pResult, void *pUserData)
+{
+	CMClient *pThis = static_cast<CMClient *>(pUserData);
+	pThis->SwitchToLastWeapon();
+}
+
+void CMClient::SwitchToLastWeapon()
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+
+	// 获取当前武器
+	int WantedWeapon = GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_WantedWeapon;
+
+	// 切换到上一个武器
+	int LastWeapon = m_aLastWeapon[1 - m_LastWeaponIndex];
+	if(LastWeapon <= 0 || LastWeapon > NUM_WEAPONS)
+		LastWeapon = 1; // 默认锤子
+
+	// 直接设置武器
+	GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_WantedWeapon = LastWeapon;
+
+	// 更新武器历史
+	UpdateWeaponHistory(WantedWeapon);
+}
+
+void CMClient::UpdateWeaponHistory(int CurrentWeapon)
+{
+	if(CurrentWeapon <= 0 || CurrentWeapon > NUM_WEAPONS)
+		return;
+
+	// 如果当前武器与上一个记录不同，则更新历史
+	if(m_aLastWeapon[m_LastWeaponIndex] != CurrentWeapon)
+	{
+		m_LastWeaponIndex = 1 - m_LastWeaponIndex;
+		m_aLastWeapon[m_LastWeaponIndex] = CurrentWeapon;
+	}
 }

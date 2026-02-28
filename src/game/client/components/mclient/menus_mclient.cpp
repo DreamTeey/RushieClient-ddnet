@@ -243,6 +243,17 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
 
     // ================== 右侧渲染 ==================
     DoSettingGroup(&RightColumn, MCLocalize("实用功能"), [&](CUIRect* pCol) {
+        // 武器快捷切换
+        DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWeaponSwitch, MCLocalize("武器快捷切换"), &g_Config.m_McWeaponSwitch, pCol, LineSize);
+        pCol->HSplitTop(MarginSmall, nullptr, pCol);
+        if(g_Config.m_McWeaponSwitch)
+        {
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                static CButtonContainer ReaderButton, ClearButton;
+                DoLine_KeyReader(*pRect, ReaderButton, ClearButton, MCLocalize("切换按键"), "mc_switch_last_weapon");
+            });
+        }
+
         // 好友上线提醒
         DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendNotify, MCLocalize("好友上线提醒"), &g_Config.m_McFriendNotify, pCol, LineSize);
         pCol->HSplitTop(MarginSmall, nullptr, pCol);

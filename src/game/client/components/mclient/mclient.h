@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_MCLIENT_MCLIENT_H
 
 #include <game/client/component.h>
+#include <engine/console.h>
 #include <engine/friends.h>
 #include <engine/serverbrowser.h>
 
@@ -32,6 +33,11 @@ public:
 	void OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::CClient *pFriendClient);	
 	void OnFriendLeave(const char *pName, const char *pClan);
 
+	// 武器切换方法
+	void SwitchToLastWeapon();
+	void UpdateWeaponHistory(int CurrentWeapon);
+	static void ConSwitchLastWeaponCallback(IConsole::IResult *pResult, void *pUserData);
+
 	// 颜色转换函数
 	static int getIntFromColor(float Hue, float Sat, float LhT)
 	{
@@ -53,7 +59,7 @@ private:
 	void SendSkinUpdate(bool IsDummy);
 	bool CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId);
 	bool CheckDistanceClone(const vec2& LocalPos, int& TargetId);
-	
+
 	// 好友功能辅助方法
 	void ScanServersForFriends();
 	void HandleFriendClient(const CServerInfo *pServerInfo, const CServerInfo::CClient *pClient);
@@ -88,6 +94,10 @@ private:
 	};
 	SFriendState m_aFriendStates[IFriends::MAX_FRIENDS];
 	int m_NumFriendStates;
+
+	// 武器切换相关
+	int m_aLastWeapon[2]; // 记录最近使用的两个武器
+	int m_LastWeaponIndex;
 };
 
 #endif
