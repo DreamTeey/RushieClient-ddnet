@@ -22,7 +22,7 @@ public:
 	virtual void OnInit() override;
 	virtual void OnConsoleInit() override;
 	virtual void OnRender() override;
-
+	virtual void OnMessage(int MsgType, void *pRawMsg) override;
 	// 克隆人皮肤复制方法
 	void CheckCloneSkin();
 	void UpdateRainbow();
@@ -38,6 +38,14 @@ public:
 	void UpdateWeaponHistory(int CurrentWeapon);
 	bool HasWeapon(int Weapon) const;
 	static void ConSwitchLastWeaponCallback(IConsole::IResult *pResult, void *pUserData);
+
+	// 复读功能方法
+	void RepeatLastMessage();
+	static void ConRepeatLastMessageCallback(IConsole::IResult *pResult, void *pUserData);
+
+	// 自动加一方法
+	void CheckAutoPlusOne();
+	void ProcessAutoPlusOne(const char *pMessage, int ClientId);
 
 	// 颜色转换函数
 	static int getIntFromColor(float Hue, float Sat, float LhT)
@@ -93,12 +101,22 @@ private:
 		char m_aClan[MAX_CLAN_LENGTH];
 		bool m_IsStillOnline;
 	};
-	SFriendState m_aFriendStates[IFriends::MAX_FRIENDS];
+	static SFriendState m_aFriendStates[IFriends::MAX_FRIENDS];
 	int m_NumFriendStates;
 
 	// 武器切换相关
 	int m_aLastWeapon[2]; // 记录最近使用的两个武器
 	int m_LastWeaponIndex;
+
+	// 复读功能相关
+	char m_aLastMessage[512]; // 记录最后一条消息
+	bool m_HasLastMessage; // 是否有记录的消息
+
+	// 自动加一相关
+	char m_aPreviousMessage[512]; // 记录上一条公屏消息
+	char m_aLastRepeatedMessage[512]; // 记录最后一条复读的消息
+	bool m_HasPreviousMessage; // 是否有上一条消息
+	float m_LastPlusOneTime; // 最后一次加一的时间
 };
 
 #endif

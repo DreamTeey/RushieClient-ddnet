@@ -121,13 +121,15 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
     static CScrollRegion s_ScrollRegion;
     vec2 ScrollOffset(0.0f, 0.0f);
     CScrollRegionParams ScrollParams;
-    ScrollParams.m_ScrollUnit = 120.0f;
+    ScrollParams.m_ScrollUnit = 60.0f;
     ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
     ScrollParams.m_ScrollbarMargin = 5.0f;
     s_ScrollRegion.Begin(&MainView, &ScrollOffset, &ScrollParams);
 
-    // 应用偏移
     MainView.y += ScrollOffset.y;
+
+    MainView.VSplitRight(5.0f, &MainView, nullptr); // Padding for scrollbar
+    MainView.VSplitLeft(5.0f, nullptr, &MainView); // Padding for scrollbar
 
     CUIRect LeftColumn, RightColumn;
     MainView.Margin(MarginSmall, &MainView);
@@ -136,7 +138,9 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
     // --- 核心辅助函数：渲染一个功能块 ---
     auto DoSettingGroup = [&](CUIRect* pColumn, const char* pTitle, auto&& RenderContent) {
         // 固定高度：设定一个足够大的值，容纳所有选项展开后的状态
-        const float FixedGroupHeight = 450.0f; 
+        // 趣味面板：22行选项 + 标题 = 22 * 25.0f + 20.0f = 570.0f
+        // 实用功能：约10行选项 + 标题 = 10 * 25.0f + 20.0f = 270.0f
+        const float FixedGroupHeight = 570.0f; 
         
         // 1. 准备背景矩形 (在处理 pColumn 之前)
         CUIRect Background = *pColumn;
@@ -239,6 +243,30 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
                 });
             }
         }
+
+        // 消息复读
+        DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McRepeaterEnable, MCLocalize("消息复读"), &g_Config.m_McRepeaterEnable, pCol, LineSize);
+        pCol->HSplitTop(MarginSmall, nullptr, pCol);
+        if(g_Config.m_McRepeaterEnable)
+        {
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                static CButtonContainer ReaderButton, ClearButton;
+                DoLine_KeyReader(*pRect, ReaderButton, ClearButton, MCLocalize("复读按键"), "mc_repeat_last_message");
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                Ui()->DoScrollbarOption(&g_Config.m_McRepeaterCooldown, &g_Config.m_McRepeaterCooldown, pRect, MCLocalize("冷却时间(秒)"), 1, 10);
+            });
+        }
+
+        // 自动加一
+        DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McAutoPlusOneEnable, MCLocalize("自动加一"), &g_Config.m_McAutoPlusOneEnable, pCol, LineSize);
+        pCol->HSplitTop(MarginSmall, nullptr, pCol);
+        if(g_Config.m_McAutoPlusOneEnable)
+        {
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                Ui()->DoScrollbarOption(&g_Config.m_McAutoPlusOneCooldown, &g_Config.m_McAutoPlusOneCooldown, pRect, MCLocalize("冷却时间(秒)"), 1, 10);
+            });
+        }
     });
 
     // ================== 右侧渲染 ==================
@@ -289,13 +317,11 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
     });
 
     // ================== 滚动条计算 ==================
-    // 既然使用了固定高度，滚动条高度也要据此调整
-    float TotalContentHeight = maximum(LeftColumn.y, RightColumn.y);
     CUIRect ScrollRect;
     ScrollRect.x = MainView.x;
-    ScrollRect.y = MainView.y;
+    ScrollRect.y = maximum(LeftColumn.y, RightColumn.y) + MarginSmall * 2.0f;
     ScrollRect.w = MainView.w;
-    ScrollRect.h = (MainView.y - TotalContentHeight) + MarginBetweenSections;
+    ScrollRect.h = 0.0f;
 
     s_ScrollRegion.AddRect(ScrollRect);
     s_ScrollRegion.End();

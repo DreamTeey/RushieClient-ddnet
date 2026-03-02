@@ -38,6 +38,14 @@ MACRO_CONFIG_INT(McRainbowTeeFeetSpeed, mc_rainbow_tee_feet_speed, 50, 0, 100, C
 // 武器快捷切换相关配置：控制最近使用武器的快速切换功能
 MACRO_CONFIG_INT(McWeaponSwitch, mc_weapon_switch, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Weapon quick switch between last two weapons")
 
+// 消息复读相关配置：控制聊天消息的复读功能
+MACRO_CONFIG_INT(McRepeaterEnable, mc_repeater_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable message repeater")
+MACRO_CONFIG_INT(McRepeaterCooldown, mc_repeater_cooldown, 2, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Message repeater cooldown in seconds")
+
+// 自动加一相关配置：自动复读连续相同的消息
+MACRO_CONFIG_INT(McAutoPlusOneEnable, mc_auto_plus_one_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable auto plus one")
+MACRO_CONFIG_INT(McAutoPlusOneCooldown, mc_auto_plus_one_cooldown, 3, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto plus one cooldown in seconds")
+
 // 好友上线提醒相关配置：控制好友上线时的提醒功能
 MACRO_CONFIG_INT(McFriendNotify, mc_friend_notify, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Friend online notification")
 MACRO_CONFIG_INT(McFriendNotifyAutoRefresh, mc_friend_notify_auto_refresh, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto refresh server list for friend notification")
