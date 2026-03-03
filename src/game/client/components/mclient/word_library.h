@@ -109,6 +109,10 @@ public:
 	void SaveConfig();
 	void LoadConfig();
 
+	// 获取列表
+	const std::vector<CWordGroup *>& GetGroups() const { return m_vGroups; }
+	const std::vector<CWordMessage>& GetMessages() const { return m_vMessages; }
+
 	// 组件接口
 	int Sizeof() const override { return sizeof(*this); }
 	void OnConsoleInit() override;

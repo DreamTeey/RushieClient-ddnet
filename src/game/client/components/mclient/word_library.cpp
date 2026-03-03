@@ -411,7 +411,7 @@ void CWordLibrary::SaveConfig()
 	}
 
 	char aBuf[512];
-	str_format(aBuf, sizeof(aBuf), "# Word Library Configuration\n");
+	str_copy(aBuf, "# Word Library Configuration\n", sizeof(aBuf));
 	io_write(File, aBuf, str_length(aBuf));
 
 	// 保存分组
