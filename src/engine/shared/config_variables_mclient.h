@@ -10,6 +10,20 @@
 
 // MClient Fun Panel - 功能面板配置
 
+// 钩子角度辅助相关配置：辅助找到能穿过墙角缝隙的最佳钩子角度
+MACRO_CONFIG_INT(McHookAngleHelper, mc_hook_angle_helper, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable hook angle helper for DDR mode")
+MACRO_CONFIG_INT(McHookAngleScanRange, mc_hook_angle_scan_range, 90, 30, 180, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook angle scan range in degrees")
+MACRO_CONFIG_INT(McHookAngleScanStep, mc_hook_angle_scan_step, 2, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook angle scan step in degrees")
+MACRO_CONFIG_INT(McHookAngleShowScanRange, mc_hook_angle_show_scan_range, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show scan range")
+MACRO_CONFIG_INT(McHookAngleShowAllAngles, mc_hook_angle_show_all_angles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show all test angles")
+MACRO_CONFIG_INT(McHookAngleShowCollision, mc_hook_angle_show_collision, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show collision points")
+
+// 交互选项
+MACRO_CONFIG_INT(McHookAngleAutoApply, mc_hook_angle_auto_apply, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto apply best angle")
+
+// 性能选项
+MACRO_CONFIG_INT(McHookAngleUpdateRate, mc_hook_angle_update_rate, 60, 1, 120, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Update rate in Hz")
+
 // 随机皮肤旋转相关配置：控制皮肤和颜色的随机旋转功能
 MACRO_CONFIG_INT(McRandomSkinRotate, mc_random_skin_rotate, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Random skin rotation")
 MACRO_CONFIG_INT(McRandomSkinRotateInterval, mc_random_skin_rotate_interval, 5, 1, 60, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Random skin rotation interval in seconds")

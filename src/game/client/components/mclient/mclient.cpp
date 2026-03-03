@@ -35,6 +35,11 @@ CMClient::CMClient()
 	m_LastPlusOneTime = 0.0f;
 	mem_zero(m_aPreviousMessage, sizeof(m_aPreviousMessage));
 	mem_zero(m_aLastRepeatedMessage, sizeof(m_aLastRepeatedMessage));
+
+	// 初始化钩子角度辅助功能
+	m_HookAngleHelperEnabled = false;
+	m_BestHookAngle = 0.0f;
+	m_HasBestAngle = false;
 }
 
 void CMClient::OnInit()
@@ -51,6 +56,14 @@ void CMClient::OnConsoleInit()
 	// 注册复读命令（支持按键绑定和直接执行）
 	Console()->Register("mc_repeat_last_message", "", CFGFLAG_CLIENT,
 		ConRepeatLastMessageCallback, this, "Repeat last message");
+
+	// 注册钩子角度辅助命令（支持按键绑定和直接执行）
+	Console()->Register("mc_toggle_hook_angle_helper", "", CFGFLAG_CLIENT,
+		ConToggleHookAngleHelperCallback, this, "Toggle hook angle helper");
+	Console()->Register("mc_hook_angle_apply", "", CFGFLAG_CLIENT,
+		ConHookAngleApplyCallback, this, "Apply best angle");
+	Console()->Register("mc_hook_angle_reset", "", CFGFLAG_CLIENT,
+		ConHookAngleResetCallback, this, "Reset helper state");
 }
 
 void CMClient::OnMessage(int MsgType, void *pRawMsg)
@@ -122,6 +135,13 @@ void CMClient::OnRender()
 	if(g_Config.m_McFriendNotify)
 	{
 		CheckFriendNotification();
+	}
+
+	// 钩子角度辅助功能
+	if(g_Config.m_McHookAngleHelper)
+	{
+		UpdateHookAngleHelper();
+		RenderHookAngleHelper();
 	}
 
 	// 修复：使用正确的配置项作为条件判断
@@ -598,4 +618,519 @@ void CMClient::CheckAutoPlusOne()
 {
 	// 这个方法保留用于可能的扩展
 	// 目前自动加一逻辑在ProcessAutoPlusOne中处理
+}
+
+// ================== 钩子角度辅助功能 ==================
+
+bool CMClient::CheckHookCollision(const vec2& Start, const vec2& End, vec2& OutCollision, vec2& OutBeforeCollision) const
+{
+	// 使用Collision系统的IntersectLineTeleHook方法检测碰撞
+	// 这个方法考虑了钩子的特殊行为（如传送、nohook等）
+	return Collision()->IntersectLineTeleHook(Start, End, &OutCollision, &OutBeforeCollision) != 0;
+}
+
+bool CMClient::IsHookPassable(const vec2& Start, const vec2& End) const
+{
+	vec2 CollisionPos, BeforeCollisionPos;
+	
+	// 使用更精确的碰撞检测
+	// 先使用IntersectLineTeleHook检测碰撞
+	int CollisionResult = Collision()->IntersectLineTeleHook(Start, End, &CollisionPos, &BeforeCollisionPos);
+
+	if(CollisionResult == 0)
+	{
+		// 没有碰撞，可以通过
+		return true;
+	}
+
+	// 检查碰撞点是否在终点附近（表示可以穿过缝隙）
+	float DistanceToEnd = distance(CollisionPos, End);
+
+	// 如果碰撞点距离终点非常近（小于1个像素），认为可以通过
+	if(DistanceToEnd < 1.0f)
+	{
+		return true;
+	}
+	
+	// 检查碰撞类型
+	int TileIndex = Collision()->GetTile(round_to_int(CollisionPos.x), round_to_int(CollisionPos.y));
+	
+	// 某些特殊瓦片允许钩子通过
+	// 例如：传送门、空气等
+	if(Collision()->IsTeleport(TileIndex))
+		return true;
+	
+	// 其他碰撞类型（墙壁、nohook等）不允许通过
+	return false;
+}
+
+bool CMClient::SimulateHookFlight(const vec2& Start, float Angle, vec2& OutHitPos, float& OutDistance, bool& OutHitTeleport) const
+{
+	// 参考DDNet官方实现，模拟钩子的实际飞行过程
+	
+	// 获取钩子参数
+	float HookFireSpeed = GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_Predicted.m_Tuning.m_HookFireSpeed;
+	float HookLength = GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_Predicted.m_Tuning.m_HookLength;
+	
+	if(HookFireSpeed <= 0.0f || HookLength <= 0.0f)
+	{
+		OutHitPos = Start;
+		OutDistance = 0.0f;
+		OutHitTeleport = false;
+		return false;
+	}
+	
+	// 钩子起始距离（与官方实现一致）
+	static constexpr float HOOK_START_DISTANCE = CCharacterCore::PhysicalSize() * 1.5f;
+	
+	// 计算方向并量化（与官方实现一致）
+	vec2 Direction = direction(Angle);
+	vec2 QuantizedDirection = Direction;
+	QuantizedDirection.x = round_to_int(QuantizedDirection.x * 256.0f) / 256.0f;
+	QuantizedDirection.y = round_to_int(QuantizedDirection.y * 256.0f) / 256.0f;
+	
+	// 计算起始位置
+	vec2 BasePos = Start;
+	vec2 StartOffset = QuantizedDirection * HOOK_START_DISTANCE;
+	vec2 SegmentStartPos = BasePos + StartOffset;
+	SegmentStartPos.x = round_to_int(SegmentStartPos.x);
+	SegmentStartPos.y = round_to_int(SegmentStartPos.y);
+	
+	// 最大tick数（与官方实现一致）
+	const int MaxHookTicks = 5 * Client()->GameTickSpeed();
+	
+	// 模拟钩子飞行
+	bool HookEnteredTelehook = false;
+	OutHitTeleport = false;
+	
+	for(int HookTick = 0; HookTick < MaxHookTicks; ++HookTick)
+	{
+		int Tele;
+		vec2 HitPos;
+		vec2 SegmentEndPos = SegmentStartPos + QuantizedDirection * HookFireSpeed;
+		
+		// 检查是否超过最大长度
+		if(distance(BasePos, SegmentEndPos) > HookLength)
+		{
+			// 钩子到达最大长度，没有碰撞
+			OutHitPos = BasePos + normalize(SegmentEndPos - BasePos) * HookLength;
+			OutDistance = distance(Start, OutHitPos);
+			return false;
+		}
+		
+		// 检查地图碰撞
+		int Hit = Collision()->IntersectLineTeleHook(SegmentStartPos, SegmentEndPos, &HitPos, nullptr, &Tele);
+		
+		// 没有碰撞，继续
+		if(!Hit)
+		{
+			SegmentStartPos = SegmentEndPos;
+			SegmentStartPos.x = round_to_int(SegmentStartPos.x);
+			SegmentStartPos.y = round_to_int(SegmentStartPos.y);
+			continue;
+		}
+		
+		// 碰撞到钩子传送门
+		if(Hit == TILE_TELEINHOOK)
+		{
+			HookEnteredTelehook = true;
+			OutHitTeleport = true;
+			
+			// 检查传送出口
+			const std::vector<vec2>& vTeleOuts = Collision()->TeleOuts(Tele - 1);
+			if(vTeleOuts.empty())
+			{
+				// 钩子卡住
+				OutHitPos = HitPos;
+				OutDistance = distance(Start, HitPos);
+				return true;
+			}
+			else if(vTeleOuts.size() > 1)
+			{
+				// 多个出口，不确定
+				OutHitPos = HitPos;
+				OutDistance = distance(Start, HitPos);
+				return true;
+			}
+			
+			// 通过传送门，更新位置继续
+			BasePos = vTeleOuts[0];
+			SegmentStartPos = BasePos + QuantizedDirection * HOOK_START_DISTANCE;
+			SegmentStartPos.x = round_to_int(SegmentStartPos.x);
+			SegmentStartPos.y = round_to_int(SegmentStartPos.y);
+			continue;
+		}
+		
+		// 碰撞到其他物体（墙壁、nohook等）
+		OutHitPos = HitPos;
+		OutDistance = distance(Start, HitPos);
+		return true;
+	}
+	
+	// 超过最大tick数，没有碰撞
+	OutHitPos = BasePos + QuantizedDirection * HookLength;
+	OutDistance = distance(Start, OutHitPos);
+	return false;
+}
+void CMClient::ConToggleHookAngleHelperCallback(IConsole::IResult *pResult, void *pUserData)
+{
+	CMClient *pThis = static_cast<CMClient *>(pUserData);
+	pThis->m_HookAngleHelperEnabled = !pThis->m_HookAngleHelperEnabled;
+	g_Config.m_McHookAngleHelper = pThis->m_HookAngleHelperEnabled;
+	dbg_msg("mclient", "Hook angle helper %s", pThis->m_HookAngleHelperEnabled ? "enabled" : "disabled");
+}
+
+void CMClient::ConHookAngleApplyCallback(IConsole::IResult *pResult, void *pUserData)
+{
+	CMClient *pThis = static_cast<CMClient *>(pUserData);
+	pThis->ApplyBestAngle();
+}
+
+void CMClient::ConHookAngleResetCallback(IConsole::IResult *pResult, void *pUserData)
+{
+	CMClient *pThis = static_cast<CMClient *>(pUserData);
+	pThis->m_HasBestAngle = false;
+	pThis->m_BestHookAngle = 0.0f;
+	pThis->m_vAngleResults.clear();
+	dbg_msg("mclient", "Hook angle helper reset");
+}
+
+
+void CMClient::UpdateHookAngleHelper()
+{
+	// 获取本地玩家
+	const CNetObj_PlayerInfo *pLocalInfo = GameClient()->m_Snap.m_pLocalInfo;
+	if(!pLocalInfo)
+	{
+		// dbg_msg("mclient", "Hook angle helper: No local player info");
+		return;
+	}
+
+	// 获取本地玩家位置
+	vec2 LocalPos = GameClient()->m_Snap.m_pLocalCharacter ?
+				vec2(GameClient()->m_Snap.m_pLocalCharacter->m_X, GameClient()->m_Snap.m_pLocalCharacter->m_Y) :
+				vec2(0, 0);
+	if(LocalPos.x == 0 && LocalPos.y == 0)
+	{
+		// dbg_msg("mclient", "Hook angle helper: Invalid local pos");
+		return;
+	}
+
+	// 获取当前鼠标角度
+	vec2 MousePos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+
+	// 考虑鼠标距离缩放
+	if(g_Config.m_TcScaleMouseDistance && !GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		const int MaxDistance = g_Config.m_ClDyncam ? g_Config.m_ClDyncamMaxDistance : g_Config.m_ClMouseMaxDistance;
+		if(MaxDistance > 5 && MaxDistance < 1000) // Don't scale if angle bind or reduces precision
+			MousePos *= 1000.0f / (float)MaxDistance;
+	}
+
+	float CurrentAngle = angle(MousePos);
+
+	// 将角度转换为度数
+	float CurrentAngleDeg = CurrentAngle * 180.0f / pi;
+
+	// 扫描范围和步进
+	float ScanRange = g_Config.m_McHookAngleScanRange;
+	float ScanStep = g_Config.m_McHookAngleScanStep / 4.0;
+
+	// 从当前角度开始扫描
+	float StartAngle = CurrentAngleDeg - ScanRange / 2.0f;
+	float EndAngle = CurrentAngleDeg + ScanRange / 2.0f;
+
+	// 扫描寻找最佳角度
+	m_HasBestAngle = false;
+	m_BestHookAngle = 0.0f;
+
+	int CurrentWeapon = GameClient()->m_Snap.m_pLocalCharacter ? GameClient()->m_Snap.m_pLocalCharacter->m_Weapon : 0;
+
+	// 钩子最大长度（从tuning参数获取）
+	float MaxHookLength = 800.0f; // 默认值，可以从tuning参数读取
+
+	// 清空之前的扫描结果
+	m_vAngleResults.clear();
+
+	// 存储可通过的角度范围
+	struct SAngleRange
+	{
+		float StartAngle;
+		float EndAngle;
+	};
+	std::vector<SAngleRange> vPassableRanges;
+
+	for(float Angle = StartAngle; Angle <= EndAngle; Angle += ScanStep)
+	{
+		// 将角度转换为弧度
+		float AngleRad = Angle * pi / 180.0f;
+
+		// 使用新的模拟函数检测钩子碰撞
+		vec2 HitPos;
+		float Distance;
+		bool HitTeleport;
+		bool bHit = SimulateHookFlight(LocalPos, AngleRad, HitPos, Distance, HitTeleport);
+
+		// 记录扫描结果
+		SAngleResult Result;
+		Result.m_Angle = AngleRad;
+		Result.m_Distance = Distance;
+		Result.m_Passable = !bHit;
+		Result.m_CollisionPos = HitPos;
+		m_vAngleResults.push_back(Result);
+	}
+
+	// 分析扫描结果，找出可通过的角度范围
+	if(!m_vAngleResults.empty())
+	{
+		// 找出所有可通过的角度范围
+		bool bInPassableRange = m_vAngleResults[0].m_Passable;
+		float RangeStart = m_vAngleResults[0].m_Angle;
+
+		for(const auto &Result : m_vAngleResults)
+		{
+			if(Result.m_Passable && !bInPassableRange)
+			{
+				// 进入可通过区域
+				bInPassableRange = true;
+				RangeStart = Result.m_Angle;
+			}
+			else if(!Result.m_Passable && bInPassableRange)
+			{
+				// 离开可通过区域，记录范围
+				bInPassableRange = false;
+				SAngleRange Range;
+				Range.StartAngle = RangeStart;
+				Range.EndAngle = Result.m_Angle;
+				vPassableRanges.push_back(Range);
+			}
+		}
+
+		// 如果最后还在可通过区域，记录这个范围
+		if(bInPassableRange)
+		{
+			SAngleRange Range;
+			Range.StartAngle = RangeStart;
+			Range.EndAngle = m_vAngleResults.back().m_Angle;
+			vPassableRanges.push_back(Range);
+		}
+
+		// 找到最佳角度（最接近鼠标角度的可通过范围的中心）
+		float BestDiff = 999999.0f;
+		for(const auto &Range : vPassableRanges)
+		{
+			// 计算范围的中心角度
+			float CenterAngle = (Range.StartAngle + Range.EndAngle) / 2.0f;
+
+			// 计算与鼠标角度的差异
+			float Diff = fabs(CenterAngle - CurrentAngle);
+
+			// 处理角度环绕
+			if(Diff > pi)
+			{
+				Diff = 2.0f * pi - Diff;
+			}
+
+			// 找到最接近鼠标角度的中心角度
+			if(Diff < BestDiff)
+			{
+				BestDiff = Diff;
+				m_BestHookAngle = CenterAngle;
+				m_HasBestAngle = true;
+			}
+		}
+
+		// 如果没有找到可通过角度，检查是否有碰撞点
+		if(!m_HasBestAngle)
+		{
+			// 找出所有有碰撞的角度
+			for(const auto &Result : m_vAngleResults)
+			{
+				if(!Result.m_Passable && Result.m_Distance > 50.0f)
+				{
+					// 有碰撞，使用这个角度
+					float Diff = fabs(Result.m_Angle - CurrentAngle);
+
+					// 处理角度环绕
+					if(Diff > pi)
+					{
+						Diff = 2.0f * pi - Diff;
+					}
+
+					// 找到最接近鼠标角度的碰撞角度
+					if(Diff < BestDiff)
+					{
+						BestDiff = Diff;
+						m_BestHookAngle = Result.m_Angle;
+						m_HasBestAngle = true;
+					}
+				}
+			}
+		}
+	}
+	// 自动应用最佳角度
+	if(m_HasBestAngle && g_Config.m_McHookAngleAutoApply)
+	{
+		ApplyBestAngle();
+	}
+
+}
+
+void CMClient::RenderHookAngleHelper()
+{
+	if(!m_HasBestAngle)
+	{
+		// dbg_msg("mclient", "Hook angle helper: No best angle to render");
+		return;
+	}
+
+	// 获取本地玩家位置
+	const CNetObj_PlayerInfo *pLocalInfo = GameClient()->m_Snap.m_pLocalInfo;
+	if(!pLocalInfo)
+	{
+		// dbg_msg("mclient", "Hook angle helper: No local player info for render");
+		return;
+	}
+
+	vec2 LocalPos = GameClient()->m_Snap.m_pLocalCharacter ?
+				vec2(GameClient()->m_Snap.m_pLocalCharacter->m_X, GameClient()->m_Snap.m_pLocalCharacter->m_Y) :
+				vec2(0, 0);
+	if(LocalPos.x == 0 && LocalPos.y == 0)
+	{
+		// dbg_msg("mclient", "Hook angle helper: Invalid local pos for render");
+		return;
+	}
+
+	// 绘制扫描范围（扇形）
+	if(g_Config.m_McHookAngleShowScanRange && !m_vAngleResults.empty())
+	{
+		// 获取当前武器的最大距离
+		float MaxDistance = 0.0f;
+		int CurrentWeapon = GameClient()->m_Snap.m_pLocalCharacter ? GameClient()->m_Snap.m_pLocalCharacter->m_Weapon : 0;
+		
+		Graphics()->TextureClear();
+		Graphics()->LinesBegin();
+		Graphics()->SetColor(0.3f, 0.3f, 0.3f, 0.3f);
+
+		// 绘制扇形边界
+		vec2 StartDir = vec2(cos(m_vAngleResults.front().m_Angle), sin(m_vAngleResults.front().m_Angle));
+		vec2 EndDir = vec2(cos(m_vAngleResults.back().m_Angle), sin(m_vAngleResults.back().m_Angle));
+
+		IEngineGraphics::CLineItem BoundaryLines[] = {
+			{LocalPos.x, LocalPos.y, LocalPos.x + StartDir.x * 800.0f, LocalPos.y + StartDir.y * 800.0f},
+			{LocalPos.x, LocalPos.y, LocalPos.x + EndDir.x * 800.0f, LocalPos.y + EndDir.y * 800.0f}};
+		Graphics()->LinesDraw(BoundaryLines, 2);
+		Graphics()->LinesEnd();
+	}
+
+	// 绘制所有测试角度
+	if(g_Config.m_McHookAngleShowAllAngles)
+	{
+		for(const auto &Result : m_vAngleResults)
+		{
+			vec2 Direction = vec2(cos(Result.m_Angle), sin(Result.m_Angle));
+			vec2 EndPos = Result.m_CollisionPos;
+
+			// 根据是否可通设置颜色
+			if(Result.m_Passable)
+			{
+				// 可通：绿色半透明
+				Graphics()->TextureClear();
+				Graphics()->LinesBegin();
+				Graphics()->SetColor(0.0f, 1.0f, 0.0f, 0.2f);
+				IEngineGraphics::CLineItem Line(LocalPos.x, LocalPos.y, EndPos.x, EndPos.y);
+				Graphics()->LinesDraw(&Line, 1);
+				Graphics()->LinesEnd();
+			}
+			else
+			{
+				// 不可通：红色半透明
+				Graphics()->TextureClear();
+				Graphics()->LinesBegin();
+				Graphics()->SetColor(1.0f, 0.0f, 0.0f, 0.2f);
+				IEngineGraphics::CLineItem Line(LocalPos.x, LocalPos.y, EndPos.x, EndPos.y);
+				Graphics()->LinesDraw(&Line, 1);
+				Graphics()->LinesEnd();
+
+				// 绘制碰撞点
+				if(g_Config.m_McHookAngleShowCollision && !Result.m_Passable)
+				{
+					Graphics()->TextureClear();
+					Graphics()->QuadsBegin();
+					Graphics()->SetColor(1.0f, 0.5f, 0.0f, 0.8f);
+					IGraphics::CQuadItem CollisionQuad(EndPos.x - 2.0f, EndPos.y - 2.0f, 4.0f, 4.0f);
+					Graphics()->QuadsDraw(&CollisionQuad, 1);
+					Graphics()->QuadsEnd();
+				}
+			}
+		}
+
+		// 计算最佳角度的终点
+		vec2 BestDirection = vec2(cos(m_BestHookAngle), sin(m_BestHookAngle));
+
+		// 获取当前武器的最大距离
+		float MaxDistance = 0.0f;
+		int CurrentWeapon = GameClient()->m_Snap.m_pLocalCharacter ? GameClient()->m_Snap.m_pLocalCharacter->m_Weapon : 0;
+		
+		// 检测碰撞点
+		vec2 CollisionPos, BeforeCollisionPos;
+		vec2 BestEnd;
+		if(CheckHookCollision(LocalPos, LocalPos + BestDirection * 800.0f, CollisionPos, BeforeCollisionPos))
+		{
+			// 有碰撞，显示到碰撞点的线
+			BestEnd = CollisionPos;
+		}
+		else
+		{
+			// 无碰撞，显示最大长度
+			BestEnd = LocalPos + BestDirection * 800.0f;
+		}
+
+		// 绘制最佳角度线（绿色，锁定时为黄色）
+		Graphics()->TextureClear();
+		Graphics()->LinesBegin();
+
+		Graphics()->SetColor(0.0f, 1.0f, 0.0f, 1.0f); // 绿色表示未锁定
+
+		IEngineGraphics::CLineItem Line(LocalPos.x, LocalPos.y, BestEnd.x, BestEnd.y);
+		Graphics()->LinesDraw(&Line, 1);
+		Graphics()->LinesEnd();
+
+		// 绘制起点和终点
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(1.0f, 0.0f, 0.0f, 1.0f);
+		IGraphics::CQuadItem StartQuad(LocalPos.x - 3.0f, LocalPos.y - 3.0f, 6.0f, 6.0f);
+		Graphics()->QuadsDraw(&StartQuad, 1);
+		Graphics()->QuadsEnd();
+
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(0.0f, 1.0f, 0.0f, 1.0f);
+		IGraphics::CQuadItem EndQuad(BestEnd.x - 3.0f, BestEnd.y - 3.0f, 6.0f, 6.0f);
+		Graphics()->QuadsDraw(&EndQuad, 1);
+		Graphics()->QuadsEnd();
+	}
+}
+
+void CMClient::ApplyBestAngle()
+{
+	if(!m_HasBestAngle)
+	{
+		dbg_msg("mclient", "Cannot apply angle: No best angle found");
+		return;
+	}
+	
+	// 计算鼠标位置
+	float Angle = m_BestHookAngle;
+	vec2 Direction = vec2(cos(Angle), sin(Angle));
+	
+	// 设置鼠标位置（使用最大距离）
+	float Distance = 800.0f;
+	vec2 MousePos = Direction * Distance;
+	
+	// 应用到输入
+	GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = MousePos;
+	
+	dbg_msg("mclient", "Applied angle %.2f deg", Angle * 180.0f / pi);
 }

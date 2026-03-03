@@ -271,6 +271,39 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
 
     // ================== 右侧渲染 ==================
     DoSettingGroup(&RightColumn, MCLocalize("实用功能"), [&](CUIRect* pCol) {
+        // 钩子角度辅助
+        DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McHookAngleHelper, MCLocalize("钩子角度辅助"), &g_Config.m_McHookAngleHelper, pCol, LineSize);
+        pCol->HSplitTop(MarginSmall, nullptr, pCol);
+        if(g_Config.m_McHookAngleHelper)
+        {
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                static CButtonContainer ReaderButton, ClearButton;
+                DoLine_KeyReader(*pRect, ReaderButton, ClearButton, MCLocalize("应用角度按键"), "mc_hook_angle_apply");
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                static CButtonContainer ReaderButton, ClearButton;
+                DoLine_KeyReader(*pRect, ReaderButton, ClearButton, MCLocalize("重置按键"), "mc_hook_angle_reset");
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                Ui()->DoScrollbarOption(&g_Config.m_McHookAngleScanRange, &g_Config.m_McHookAngleScanRange, pRect, MCLocalize("扫描范围(度)"), 30, 180);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                Ui()->DoScrollbarOption(&g_Config.m_McHookAngleScanStep, &g_Config.m_McHookAngleScanStep, pRect, MCLocalize("扫描步进(度)"), 1, 10);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McHookAngleShowScanRange, MCLocalize("显示扫描范围"), &g_Config.m_McHookAngleShowScanRange, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McHookAngleShowAllAngles, MCLocalize("显示所有测试角度"), &g_Config.m_McHookAngleShowAllAngles, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McHookAngleShowCollision, MCLocalize("显示碰撞点"), &g_Config.m_McHookAngleShowCollision, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McHookAngleAutoApply, MCLocalize("自动应用最佳角度"), &g_Config.m_McHookAngleAutoApply, pRect, LineSize);
+            });
+        }
+
         // 武器快捷切换
         DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWeaponSwitch, MCLocalize("武器快捷切换"), &g_Config.m_McWeaponSwitch, pCol, LineSize);
         pCol->HSplitTop(MarginSmall, nullptr, pCol);

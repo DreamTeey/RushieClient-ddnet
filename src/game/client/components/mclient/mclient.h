@@ -47,6 +47,20 @@ public:
 	void CheckAutoPlusOne();
 	void ProcessAutoPlusOne(const char *pMessage, int ClientId);
 
+	// 钩子角度辅助方法
+	void UpdateHookAngleHelper();
+	void RenderHookAngleHelper();
+	void ApplyBestAngle(); // 应用最佳角度
+	static void ConToggleHookAngleHelperCallback(IConsole::IResult *pResult, void *pUserData);
+	static void ConHookAngleApplyCallback(IConsole::IResult *pResult, void *pUserData);
+	static void ConHookAngleResetCallback(IConsole::IResult *pResult, void *pUserData);
+	static void ConToggleAutoHookCallback(IConsole::IResult *pResult, void *pUserData);
+
+	// 钩子角度辅助碰撞检测
+	bool CheckHookCollision(const vec2& Start, const vec2& End, vec2& OutCollision, vec2& OutBeforeCollision) const;
+	bool IsHookPassable(const vec2& Start, const vec2& End) const;
+	bool SimulateHookFlight(const vec2& Start, float Angle, vec2& OutHitPos, float& OutDistance, bool& OutHitTeleport) const;
+
 	// 颜色转换函数
 	static int getIntFromColor(float Hue, float Sat, float LhT)
 	{
@@ -117,6 +131,21 @@ private:
 	char m_aLastRepeatedMessage[512]; // 记录最后一条复读的消息
 	bool m_HasPreviousMessage; // 是否有上一条消息
 	float m_LastPlusOneTime; // 最后一次加一的时间
+
+	// 钩子角度辅助相关
+	bool m_HookAngleHelperEnabled; // 是否启用钩子角度辅助
+	float m_BestHookAngle; // 最佳钩子角度
+	bool m_HasBestAngle; // 是否找到最佳角度
+	
+	// 可视化增强
+	struct SAngleResult
+	{
+		float m_Angle;
+		float m_Distance;
+		bool m_Passable;
+		vec2 m_CollisionPos;
+	};
+	std::vector<SAngleResult> m_vAngleResults;
 };
 
 #endif
