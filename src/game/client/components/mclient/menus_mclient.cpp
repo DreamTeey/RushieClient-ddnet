@@ -18,6 +18,8 @@
 
 #include <game/client/components/menu_background.h>
 #include <game/client/components/menus.h>
+#include <game/client/components/binds.h>
+#include <game/client/components/key_binder.h>
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
@@ -619,6 +621,34 @@ void CMenus::RenderSettingsMClientWordLibrary(CUIRect MainView)
 		if(DoButtonLineSize_Menu(&s_SendButton, MCLocalize("发送消息"), 0, &Button, LineSize) && s_pSelectedGroup)
 		{
 			GameClient()->m_WordLibrary.SendRandomMessage(s_pSelectedGroup->m_aId);
+		}
+
+		// 快捷键绑定
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
+		CUIRect KeyBindRect, ClearKeyButton;
+		Column2.HSplitTop(LineSize * 2.0f, &KeyBindRect, &Column2);
+		KeyBindRect.VSplitRight(LineSize * 2.0f, &KeyBindRect, &ClearKeyButton);
+
+		if(s_pSelectedGroup)
+		{
+			// 使用 CKeyBinder 组件处理按键绑定
+			static CButtonContainer s_KeyBindButton, s_ClearKeyButton;
+			CBindSlot CurrentBind(s_pSelectedGroup->m_BoundKey, KeyModifier::NONE);
+			CKeyBinder::CKeyReaderResult KeyResult = GameClient()->m_KeyBinder.DoKeyReader(&s_KeyBindButton, &s_ClearKeyButton, &KeyBindRect, CurrentBind, false);
+
+			if(!KeyResult.m_Aborted && KeyResult.m_Bind.m_Key != CurrentBind.m_Key)
+			{
+				if(KeyResult.m_Bind.m_Key == KEY_UNKNOWN)
+				{
+					// 清除绑定
+					GameClient()->m_WordLibrary.UnbindKey(s_pSelectedGroup->m_aId);
+				}
+				else
+				{
+					// 绑定新按键
+					GameClient()->m_WordLibrary.BindKey(s_pSelectedGroup->m_aId, KeyResult.m_Bind.m_Key);
+				}
+			}
 		}
 	}
 

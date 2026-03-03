@@ -47,13 +47,15 @@ void CWordLibrary::OnConsoleInit()
 
 void CWordLibrary::OnNewSnapshot()
 {
-	// 检查快捷键
-	if(Input()->KeyIsPressed(KEY_F1))
+	// 检查所有绑定的快捷键
+	if(Config()->m_McWordLibraryEnable)
 	{
-		CWordGroup *pGroup = GetGroupByKey(KEY_F1);
-		if(pGroup && Config()->m_McWordLibraryEnable)
+		for(auto *pGroup : m_vGroups)
 		{
-			SendRandomMessage(pGroup->m_aId);
+			if(pGroup->m_BoundKey != 0 && Input()->KeyIsPressed(pGroup->m_BoundKey))
+			{
+				SendRandomMessage(pGroup->m_aId);
+			}
 		}
 	}
 }
