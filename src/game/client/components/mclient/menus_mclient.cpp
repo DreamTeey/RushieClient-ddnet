@@ -1,10 +1,12 @@
 #include <base/math.h>
 #include <base/system.h>
 #include <base/str.h>
+#include <base/types.h>
 
 #include <algorithm>
 #include <cctype>
 
+#include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/shared/linereader.h>
@@ -19,6 +21,7 @@
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
+#include <game/client/ui_listbox.h>
 #include <game/client/ui_scrollregion.h>
 #include <game/client/components/mclient/word_library.h>
 
@@ -406,7 +409,7 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 	static CButtonContainer s_Config;
 	if(DoButton_Menu(&s_Config, MCLocalize("MClient Settings"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mclient_config.cfg", aBuf, sizeof(aBuf));
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "settings_mclient.cfg", aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
 
@@ -433,201 +436,318 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 
 void CMenus::RenderSettingsMClientWordLibrary(CUIRect MainView)
 {
-	static CScrollRegion s_ScrollRegion;
-	vec2 ScrollOffset(0.0f, 0.0f);
-	CScrollRegionParams ScrollParams;
-	ScrollParams.m_ScrollUnit = 60.0f;
-	ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
-	ScrollParams.m_ScrollbarMargin = 5.0f;
-	s_ScrollRegion.Begin(&MainView, &ScrollOffset, &ScrollParams);
+	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
 
-	MainView.y += ScrollOffset.y;
-	MainView.VSplitRight(5.0f, &MainView, nullptr);
-	MainView.VSplitLeft(5.0f, nullptr, &MainView);
+	CUIRect LeftView, RightView, Column1, Column2, Column3, Column4, Button, Label;
+	MainView.VSplitMid(&LeftView, &RightView, Margin);
+	LeftView.VSplitLeft(MarginSmall, nullptr, &LeftView);
+	RightView.VSplitRight(MarginSmall, &RightView, nullptr);
 
-	CUIRect LeftColumn, RightColumn;
-	MainView.Margin(MarginSmall, &MainView);
-	MainView.VSplitMid(&LeftColumn, &RightColumn, MarginBetweenViews);
+	// 词库将使用4列布局
+	// [词库分组] - [分组编辑] - [消息列表] - [消息编辑]
 
-	// ================== 左侧：分组管理 ==================
-	auto DoSettingGroup = [&](CUIRect* pColumn, const char* pTitle, auto&& RenderContent) {
-		const float FixedGroupHeight = 600.0f;
-		CUIRect Background = *pColumn;
-		Background.h = FixedGroupHeight;
-		Background.Margin(-8.0f, &Background);
-		Background.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+	// 静态变量用于存储选中状态和输入内容
+	static CWordGroup *s_pSelectedGroup = nullptr;
+	static CWordMessage *s_pSelectedMessage = nullptr;
+	static char s_aGroupId[MAX_WORD_GROUP_ID_LENGTH] = "";
+	static char s_aGroupName[MAX_WORD_GROUP_NAME_LENGTH] = "";
+	static char s_aMessageContent[MAX_WORD_MESSAGE_LENGTH] = "";
 
-		CUIRect Label;
-		pColumn->HSplitTop(HeadlineHeight, &Label, pColumn);
-		Ui()->DoLabel(&Label, pTitle, HeadlineFontSize, TEXTALIGN_MC);
-		pColumn->HSplitTop(MarginSmall, nullptr, pColumn);
+	LeftView.VSplitMid(&Column1, &Column2, Margin);
+	RightView.VSplitMid(&Column3, &Column4, Margin);
 
-		RenderContent(pColumn);
+	// ====== 词库分组列表 ======
+	{
+		Column1.HSplitTop(HeadlineHeight, &Label, &Column1);
+		Label.VSplitRight(25.0f, &Label, &Button);
+		Ui()->DoLabel(&Label, MCLocalize("词库分组"), HeadlineFontSize, TEXTALIGN_ML);
+		Column1.HSplitTop(MarginSmall, nullptr, &Column1);
 
-		pColumn->HSplitTop(FixedGroupHeight - (Label.h + MarginSmall), nullptr, pColumn);
-		pColumn->HSplitTop(MarginBetweenSections, nullptr, pColumn);
-	};
+		// 搜索框
+		CUIRect SearchRect;
+		Column1.HSplitBottom(25.0f, &Column1, &SearchRect);
+		SearchRect.HSplitTop(MarginSmall, nullptr, &SearchRect);
 
-	DoSettingGroup(&LeftColumn, MCLocalize("分组管理"), [&](CUIRect* pCol) {
+		static CLineInputBuffered<128> s_GroupFilterInput;
+		std::vector<CWordGroup *> vpFilteredGroups;
+		for(CWordGroup *pGroup : GameClient()->m_WordLibrary.GetGroups())
+		{
+			if(str_find_nocase(pGroup->m_aId, s_GroupFilterInput.GetString()))
+				vpFilteredGroups.push_back(pGroup);
+			else if(str_find_nocase(pGroup->m_aDisplayName, s_GroupFilterInput.GetString()))
+				vpFilteredGroups.push_back(pGroup);
+		}
+
+		int SelectedOldGroup = -1;
+		static CListBox s_GroupListBox;
+		s_GroupListBox.DoStart(35.0f, vpFilteredGroups.size(), 1, 2, SelectedOldGroup, &Column1);
+
+		static std::vector<unsigned char> s_vGroupItemIds;
+		static std::vector<CButtonContainer> s_vGroupDeleteButtons;
+
+		const int MaxGroups = GameClient()->m_WordLibrary.GetGroups().size();
+		s_vGroupItemIds.resize(MaxGroups);
+		s_vGroupDeleteButtons.resize(MaxGroups);
+
+		for(size_t i = 0; i < vpFilteredGroups.size(); i++)
+		{
+			CWordGroup *pGroup = vpFilteredGroups[i];
+
+			if(s_pSelectedGroup && pGroup == s_pSelectedGroup)
+				SelectedOldGroup = i;
+
+			const CListboxItem Item = s_GroupListBox.DoNextItem(&s_vGroupItemIds[i], SelectedOldGroup >= 0 && (size_t)SelectedOldGroup == i);
+			if(!Item.m_Visible)
+				continue;
+
+			CUIRect GroupRect, DeleteButton, GroupLabel;
+			Item.m_Rect.Margin(0.0f, &GroupRect);
+			GroupRect.VSplitLeft(26.0f, &DeleteButton, &GroupRect);
+			DeleteButton.HMargin(7.5f, &DeleteButton);
+			DeleteButton.VSplitLeft(MarginSmall, nullptr, &DeleteButton);
+			DeleteButton.VSplitRight(MarginExtraSmall, &DeleteButton, nullptr);
+
+			// 删除按钮
+			if(pGroup->m_Removable)
+			{
+				if(Ui()->DoButton_FontIcon(&s_vGroupDeleteButtons[i], FontIcon::TRASH, 0, &DeleteButton, IGraphics::CORNER_ALL))
+				{
+					GameClient()->m_WordLibrary.RemoveGroup(pGroup->m_aId);
+					if(s_pSelectedGroup == pGroup)
+						s_pSelectedGroup = nullptr;
+				}
+			}
+
+			// 分组名称
+			GroupRect.HMargin(MarginExtraSmall, &GroupRect);
+			Ui()->DoLabel(&GroupRect, pGroup->m_aDisplayName, FontSize, TEXTALIGN_ML);
+		}
+
+		const int NewSelectedGroup = s_GroupListBox.DoEnd();
+		if(SelectedOldGroup != NewSelectedGroup || (SelectedOldGroup >= 0 && Ui()->HotItem() == &s_vGroupItemIds[NewSelectedGroup] && Ui()->MouseButtonClicked(0)))
+		{
+			s_pSelectedGroup = vpFilteredGroups[NewSelectedGroup];
+			if(!Ui()->LastMouseButton(1) && !Ui()->LastMouseButton(2))
+			{
+				str_copy(s_aGroupId, s_pSelectedGroup->m_aId);
+				str_copy(s_aGroupName, s_pSelectedGroup->m_aDisplayName);
+			}
+		}
+
+		Ui()->DoEditBox_Search(&s_GroupFilterInput, &SearchRect, 14.0f, !Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive());
+	}
+
+	// ====== 分组编辑 ======
+	{
+		Column2.HSplitTop(HeadlineHeight, &Label, &Column2);
+		Label.VSplitRight(25.0f, &Label, &Button);
+		Ui()->DoLabel(&Label, MCLocalize("分组编辑"), HeadlineFontSize, TEXTALIGN_ML);
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
+
 		// 启用词库功能
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWordLibraryEnable, MCLocalize("启用词库功能"), &g_Config.m_McWordLibraryEnable, pCol, LineSize);
-		pCol->HSplitTop(MarginSmall, nullptr, pCol);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWordLibraryEnable, MCLocalize("启用词库功能"), &g_Config.m_McWordLibraryEnable, &Column2, LineSize);
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
 
 		// 发送冷却时间
-		Ui()->DoScrollbarOption(&g_Config.m_McWordLibrarySendCooldown, &g_Config.m_McWordLibrarySendCooldown, pCol, MCLocalize("发送冷却时间(秒)"), 1, 10);
-		pCol->HSplitTop(MarginSmall, nullptr, pCol);
+		CUIRect CooldownRow, CooldownLabel, CooldownSlider;
+		Column2.HSplitTop(LineSize, &CooldownRow, &Column2);
+		CooldownRow.VSplitLeft(100.0f, &CooldownLabel, &CooldownSlider);
+		Ui()->DoLabel(&CooldownLabel, MCLocalize("发送冷却时间 (秒)"), EditBoxFontSize, TEXTALIGN_ML);
+		// 不设置固定宽度，使用剩余空间
+		Ui()->DoScrollbarOption(&g_Config.m_McWordLibrarySendCooldown, &g_Config.m_McWordLibrarySendCooldown, &CooldownSlider, "", 1, 10);
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
 
-		// 添加分组
-		CUIRect Row, Label, Input, Button;
-		pCol->HSplitTop(LineSize, &Label, pCol);
-		Ui()->DoLabel(&Label, MCLocalize("分组ID:"), EditBoxFontSize, TEXTALIGN_ML);
-		Label.VSplitRight(5.0f, &Label, &Input);
-		Input.w = 150.0f;
-		if(Ui()->DoEditBox(&s_WordGroupIdInput, &Input, EditBoxFontSize))
+		// 分组ID
+		static CLineInput s_GroupIdInput;
+		s_GroupIdInput.SetBuffer(s_aGroupId, sizeof(s_aGroupId));
+		s_GroupIdInput.SetEmptyText(MCLocalize("Group ID"));
+		Column2.HSplitTop(HeadlineFontSize, &Button, &Column2);
+		Ui()->DoEditBox(&s_GroupIdInput, &Button, 12.0f);
+
+		// 分组名称
+		static CLineInput s_GroupNameInput;
+		s_GroupNameInput.SetBuffer(s_aGroupName, sizeof(s_aGroupName));
+		s_GroupNameInput.SetEmptyText(MCLocalize("Group Name"));
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
+		Column2.HSplitTop(HeadlineFontSize, &Button, &Column2);
+		Ui()->DoEditBox(&s_GroupNameInput, &Button, 12.0f);
+
+		// 添加和更新按钮
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
+		CUIRect AddUpdateButtons;
+		Column2.HSplitTop(LineSize * 2.0f, &AddUpdateButtons, &Column2);
+		CUIRect AddButton, UpdateButton;
+		AddUpdateButtons.VSplitMid(&AddButton, &UpdateButton, MarginSmall);
+
+		static CButtonContainer s_AddGroupButton, s_UpdateGroupButton;
+		if(DoButtonLineSize_Menu(&s_AddGroupButton, MCLocalize("添加分组"), 0, &AddButton, LineSize))
 		{
-			// 输入框内容更新
-		}
-		Input.VSplitRight(5.0f, &Input, &Button);
-		Button.w = 80.0f;
-		static CButtonContainer s_AddGroupButton;
-		if(DoButton_Menu(&s_AddGroupButton, MCLocalize("添加"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
-		{
-			if(s_WordGroupIdInput.GetString()[0] != 0)
+			if(s_aGroupId[0] != 0)
 			{
-				Console()->ExecuteLineFormatted("mc_add_word_group %s %s", s_WordGroupIdInput.GetString(), s_WordGroupIdInput.GetString());
-				s_WordGroupIdInput.Clear();
+				GameClient()->m_WordLibrary.AddGroup(s_aGroupId, s_aGroupName);
+				s_aGroupId[0] = 0;
+				s_aGroupName[0] = 0;
 			}
 		}
-		pCol->HSplitTop(MarginSmall, nullptr, pCol);
-
-		// 分组列表
-		CUIRect ListRect;
-		pCol->HSplitTop(300.0f, &ListRect, pCol);
-		ListRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.15f), IGraphics::CORNER_ALL, 5.0f);
-		ListRect.Margin(5.0f, &ListRect);
-
-		// 显示分组列表
-		CWordLibrary *pWordLibrary = &GameClient()->m_WordLibrary;
-		if(pWordLibrary)
+		if(DoButtonLineSize_Menu(&s_UpdateGroupButton, MCLocalize("更新分组"), 0, &UpdateButton, LineSize) && s_pSelectedGroup)
 		{
-			CUIRect GroupRow;
-			for(size_t i = 0; i < pWordLibrary->m_vGroups.size(); ++i)
+			GameClient()->m_WordLibrary.UpdateGroup(s_pSelectedGroup->m_aId, s_aGroupName);
+		}
+
+		// 保存和加载按钮
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
+		CUIRect SaveLoadButtons;
+		Column2.HSplitTop(LineSize * 2.0f, &SaveLoadButtons, &Column2);
+		CUIRect SaveButton, LoadButton;
+		SaveLoadButtons.VSplitMid(&SaveButton, &LoadButton, MarginSmall);
+
+		static CButtonContainer s_SaveButton, s_LoadButton;
+		if(DoButtonLineSize_Menu(&s_SaveButton, MCLocalize("保存配置"), 0, &SaveButton, LineSize))
+		{
+			ConfigManager()->Save();
+		}
+		if(DoButtonLineSize_Menu(&s_LoadButton, MCLocalize("加载配置"), 0, &LoadButton, LineSize))
+		{
+			// 先清空现有词库数据
+			GameClient()->m_WordLibrary.LoadConfig();
+		}
+
+		// 发送按钮
+		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
+		Column2.HSplitTop(LineSize * 2.0f, &Button, &Column2);
+		static CButtonContainer s_SendButton;
+		if(DoButtonLineSize_Menu(&s_SendButton, MCLocalize("发送消息"), 0, &Button, LineSize) && s_pSelectedGroup)
+		{
+			GameClient()->m_WordLibrary.SendRandomMessage(s_pSelectedGroup->m_aId);
+		}
+	}
+
+	// ====== 消息列表 ======
+	{
+		Column3.HSplitTop(HeadlineHeight, &Label, &Column3);
+		Label.VSplitRight(25.0f, &Label, &Button);
+		Ui()->DoLabel(&Label, MCLocalize("消息列表"), HeadlineFontSize, TEXTALIGN_ML);
+		Column3.HSplitTop(MarginSmall, nullptr, &Column3);
+
+		// 搜索框
+		CUIRect SearchRect;
+		Column3.HSplitBottom(25.0f, &Column3, &SearchRect);
+		SearchRect.HSplitTop(MarginSmall, nullptr, &SearchRect);
+
+		static CLineInputBuffered<128> s_MessageFilterInput;
+		std::vector<CWordMessage *> vpFilteredMessages;
+		for(const CWordMessage &Message : GameClient()->m_WordLibrary.GetMessages())
+		{
+			if(!s_pSelectedGroup || Message.m_pGroup == s_pSelectedGroup)
 			{
-				CWordGroup *pGroup = pWordLibrary->m_vGroups[i];
-				if(!pGroup)
-					continue;
+				if(str_find_nocase(Message.m_aContent, s_MessageFilterInput.GetString()))
+					vpFilteredMessages.push_back(const_cast<CWordMessage *>(&Message));
+			}
+		}
 
-				ListRect.HSplitTop(LineSize, &GroupRow, &ListRect);
-				GroupRow.VSplitLeft(20.0f, &Button, &Label);
+		int SelectedOldMessage = -1;
+		static CListBox s_MessageListBox;
+		s_MessageListBox.DoStart(35.0f, vpFilteredMessages.size(), 1, 2, SelectedOldMessage, &Column3);
 
-				// 删除按钮
-				if(pGroup->m_Removable)
+		static std::vector<unsigned char> s_vMessageItemIds;
+		static std::vector<CButtonContainer> s_vMessageDeleteButtons;
+
+		const int MaxMessages = GameClient()->m_WordLibrary.GetMessages().size();
+		s_vMessageItemIds.resize(MaxMessages);
+		s_vMessageDeleteButtons.resize(MaxMessages);
+
+		for(size_t i = 0; i < vpFilteredMessages.size(); i++)
+		{
+			CWordMessage *pMessage = vpFilteredMessages[i];
+
+			if(s_pSelectedMessage && pMessage == s_pSelectedMessage)
+				SelectedOldMessage = i;
+
+			const CListboxItem Item = s_MessageListBox.DoNextItem(&s_vMessageItemIds[i], SelectedOldMessage >= 0 && (size_t)SelectedOldMessage == i);
+			if(!Item.m_Visible)
+				continue;
+
+			CUIRect MessageRect, DeleteButton, MessageLabel;
+			Item.m_Rect.Margin(0.0f, &MessageRect);
+			MessageRect.VSplitLeft(26.0f, &DeleteButton, &MessageRect);
+			DeleteButton.HMargin(7.5f, &DeleteButton);
+			DeleteButton.VSplitLeft(MarginSmall, nullptr, &DeleteButton);
+			DeleteButton.VSplitRight(MarginExtraSmall, &DeleteButton, nullptr);
+
+			// 删除按钮
+			if(pMessage->m_pGroup && pMessage->m_pGroup->m_Removable)
+			{
+				if(Ui()->DoButton_FontIcon(&s_vMessageDeleteButtons[i], FontIcon::TRASH, 0, &DeleteButton, IGraphics::CORNER_ALL))
 				{
-					static CButtonContainer s_DeleteGroupButtons[100];
-					if(DoButton_Menu(&s_DeleteGroupButtons[i], "×", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(1.0f, 0.0f, 0.0f, 0.25f)))
-					{
-						Console()->ExecuteLineFormatted("mc_remove_word_group %s", pGroup->m_aId);
-					}
+					GameClient()->m_WordLibrary.RemoveMessage(pMessage->m_pGroup->m_aId, pMessage->m_aContent);
+					if(s_pSelectedMessage == pMessage)
+						s_pSelectedMessage = nullptr;
 				}
-
-				// 分组信息
-				Label.VSplitLeft(5.0f, nullptr, &Label);
-				Ui()->DoLabel(&Label, pGroup->m_aDisplayName, EditBoxFontSize, TEXTALIGN_ML);
-				Label.VSplitRight(80.0f, &Label, &Button);
-
-				// 发送按钮
-				static CButtonContainer s_SendGroupButtons[100];
-				if(DoButton_Menu(&s_SendGroupButtons[i], MCLocalize("发送"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(0.0f, 1.0f, 0.0f, 0.25f)))
-				{
-					Console()->ExecuteLineFormatted("mc_send_word %s", pGroup->m_aId);
-				}
-
-				ListRect.HSplitTop(MarginSmall, nullptr, &ListRect);
 			}
-		}
-	});
 
-	// ================== 右侧：消息管理 ==================
-	DoSettingGroup(&RightColumn, MCLocalize("消息管理"), [&](CUIRect* pCol) {
-		// 添加消息
-		CUIRect Row, Label, Input, Button;
-		pCol->HSplitTop(LineSize, &Label, pCol);
-		Ui()->DoLabel(&Label, MCLocalize("选择分组:"), EditBoxFontSize, TEXTALIGN_ML);
-		Label.VSplitRight(5.0f, &Label, &Input);
-		Input.w = 150.0f;
-		if(Ui()->DoEditBox(&s_WordGroupIdInput, &Input, EditBoxFontSize))
-		{
-			// 输入框内容更新
+			// 消息内容
+			MessageRect.HMargin(MarginExtraSmall, &MessageRect);
+			Ui()->DoLabel(&MessageRect, pMessage->m_aContent, FontSize, TEXTALIGN_ML);
 		}
-		pCol->HSplitTop(MarginSmall, nullptr, pCol);
 
-		pCol->HSplitTop(LineSize, &Label, pCol);
-		Ui()->DoLabel(&Label, MCLocalize("消息内容:"), EditBoxFontSize, TEXTALIGN_ML);
-		Label.VSplitRight(5.0f, &Label, &Input);
-		Input.w = 300.0f;
-		if(Ui()->DoEditBox(&s_WordMessageInput, &Input, EditBoxFontSize))
+		const int NewSelectedMessage = s_MessageListBox.DoEnd();
+		if(SelectedOldMessage != NewSelectedMessage || (SelectedOldMessage >= 0 && Ui()->HotItem() == &s_vMessageItemIds[NewSelectedMessage] && Ui()->MouseButtonClicked(0)))
 		{
-			// 输入框内容更新
-		}
-		Input.VSplitRight(5.0f, &Input, &Button);
-		Button.w = 80.0f;
-		static CButtonContainer s_AddMessageButton;
-		if(DoButton_Menu(&s_AddMessageButton, MCLocalize("添加"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
-		{
-			if(s_WordGroupIdInput.GetString()[0] != 0 && s_WordMessageInput.GetString()[0] != 0)
+			s_pSelectedMessage = vpFilteredMessages[NewSelectedMessage];
+			if(!Ui()->LastMouseButton(1) && !Ui()->LastMouseButton(2))
 			{
-				Console()->ExecuteLineFormatted("mc_add_word_message %s %s", s_WordGroupIdInput.GetString(), s_WordMessageInput.GetString());
-				s_WordMessageInput.Clear();
+				str_copy(s_aMessageContent, s_pSelectedMessage->m_aContent);
 			}
 		}
-		pCol->HSplitTop(MarginSmall, nullptr, pCol);
 
-		// 消息列表
-		CUIRect ListRect;
-		pCol->HSplitTop(300.0f, &ListRect, pCol);
-		ListRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.15f), IGraphics::CORNER_ALL, 5.0f);
-		ListRect.Margin(5.0f, &ListRect);
+		Ui()->DoEditBox_Search(&s_MessageFilterInput, &SearchRect, 14.0f, !Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive());
+	}
 
-		// 显示消息列表
-		CWordLibrary *pWordLibrary = &GameClient()->m_WordLibrary;
-		if(pWordLibrary)
+	// ====== 消息编辑 ======
+	{
+		Column4.HSplitTop(HeadlineHeight, &Label, &Column4);
+		Label.VSplitRight(25.0f, &Label, &Button);
+		Ui()->DoLabel(&Label, MCLocalize("消息编辑"), HeadlineFontSize, TEXTALIGN_ML);
+		Column4.HSplitTop(MarginSmall, nullptr, &Column4);
+
+		// 显示当前选中的分组
+		Column4.HSplitTop(LineSize, &Button, &Column4);
+		if(s_pSelectedGroup)
 		{
-			CUIRect MessageRow;
-			for(size_t i = 0; i < pWordLibrary->m_vMessages.size(); ++i)
+			Ui()->DoLabel(&Button, s_pSelectedGroup->m_aDisplayName, EditBoxFontSize, TEXTALIGN_ML);
+		}
+		else
+		{
+			Ui()->DoLabel(&Button, MCLocalize("未选择分组"), EditBoxFontSize, TEXTALIGN_ML);
+		}
+
+		// 消息内容输入框
+		static CLineInput s_MessageInput;
+		s_MessageInput.SetBuffer(s_aMessageContent, sizeof(s_aMessageContent));
+		s_MessageInput.SetEmptyText(MCLocalize("Message Content"));
+		Column4.HSplitTop(MarginSmall, nullptr, &Column4);
+		Column4.HSplitTop(HeadlineFontSize * 2.0f, &Button, &Column4);
+		Ui()->DoEditBox(&s_MessageInput, &Button, 12.0f);
+
+		// 添加和更新按钮
+		Column4.HSplitTop(MarginSmall, nullptr, &Column4);
+		CUIRect AddUpdateButtons;
+		Column4.HSplitTop(LineSize * 2.0f, &AddUpdateButtons, &Column4);
+		CUIRect AddButton, UpdateButton;
+		AddUpdateButtons.VSplitMid(&AddButton, &UpdateButton, MarginSmall);
+
+		static CButtonContainer s_AddMessageButton, s_UpdateMessageButton;
+		if(DoButtonLineSize_Menu(&s_AddMessageButton, MCLocalize("添加消息"), 0, &AddButton, LineSize) && s_pSelectedGroup)
+		{
+			if(s_aMessageContent[0] != 0)
 			{
-				CWordMessage *pMessage = &pWordLibrary->m_vMessages[i];
-				if(!pMessage || !pMessage->m_pGroup)
-					continue;
-
-				ListRect.HSplitTop(LineSize, &MessageRow, &ListRect);
-				MessageRow.VSplitLeft(20.0f, &Button, &Label);
-
-				// 删除按钮
-				if(pMessage->m_pGroup->m_Removable)
-				{
-					static CButtonContainer s_DeleteMessageButtons[1000];
-					if(DoButton_Menu(&s_DeleteMessageButtons[i], "×", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 3.0f, 0.0f, ColorRGBA(1.0f, 0.0f, 0.0f, 0.25f)))
-					{
-						Console()->ExecuteLineFormatted("mc_remove_word_message %s %s", pMessage->m_pGroup->m_aId, pMessage->m_aContent);
-					}
-				}
-
-				// 消息内容
-				Label.VSplitLeft(5.0f, nullptr, &Label);
-				Ui()->DoLabel(&Label, pMessage->m_aContent, EditBoxFontSize, TEXTALIGN_ML);
-
-				ListRect.HSplitTop(MarginSmall, nullptr, &ListRect);
+				GameClient()->m_WordLibrary.AddMessage(s_pSelectedGroup->m_aId, s_aMessageContent);
+				s_aMessageContent[0] = 0;
 			}
 		}
-	});
-
-	// ================== 滚动条计算 ==================
-	CUIRect ScrollRect;
-	ScrollRect.x = MainView.x;
-	ScrollRect.y = maximum(LeftColumn.y, RightColumn.y) + MarginSmall * 2.0f;
-	ScrollRect.w = MainView.w;
-	ScrollRect.h = 0.0f;
-
-	s_ScrollRegion.AddRect(ScrollRect);
-	s_ScrollRegion.End();
+		if(DoButtonLineSize_Menu(&s_UpdateMessageButton, MCLocalize("更新消息"), 0, &UpdateButton, LineSize) && s_pSelectedMessage)
+		{
+			GameClient()->m_WordLibrary.UpdateMessage(s_pSelectedMessage->m_pGroup->m_aId, s_pSelectedMessage->m_aContent, s_aMessageContent);
+		}
+	}
 }

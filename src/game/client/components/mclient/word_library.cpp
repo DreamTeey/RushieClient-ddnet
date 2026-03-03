@@ -38,6 +38,9 @@ void CWordLibrary::OnConsoleInit()
 	Console()->Register("mc_list_word_groups", "", CFGFLAG_CLIENT, ConListWordGroups, this, "List all word groups");
 	Console()->Register("mc_list_group_messages", "s[group_id]", CFGFLAG_CLIENT, ConListGroupMessages, this, "List messages in a group");
 
+	// 注册配置保存回调
+	ConfigManager()->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::MCLIENT);
+
 	// 加载配置
 	LoadConfig();
 }
@@ -138,6 +141,23 @@ CWordGroup *CWordLibrary::FindGroup(const char *pId)
 	return nullptr;
 }
 
+bool CWordLibrary::UpdateGroup(const char *pId, const char *pNewDisplayName)
+{
+	if(!pId || !pNewDisplayName)
+		return false;
+
+	CWordGroup *pGroup = FindGroup(pId);
+	if(!pGroup)
+	{
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Group not found");
+		return false;
+	}
+
+	str_copy(pGroup->m_aDisplayName, pNewDisplayName);
+	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Group updated successfully");
+	return true;
+}
+
 // 消息管理
 CWordMessage *CWordLibrary::AddMessage(const char *pGroupId, const char *pContent)
 {
@@ -198,6 +218,32 @@ CWordMessage *CWordLibrary::FindMessage(const char *pGroupId, const char *pConte
 			return &Message;
 	}
 	return nullptr;
+}
+
+bool CWordLibrary::UpdateMessage(const char *pGroupId, const char *pOldContent, const char *pNewContent)
+{
+	if(!pGroupId || !pOldContent || !pNewContent)
+		return false;
+
+	CWordGroup *pGroup = FindGroup(pGroupId);
+	if(!pGroup)
+	{
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Group not found");
+		return false;
+	}
+
+	for(auto &Message : m_vMessages)
+	{
+		if(Message.m_pGroup == pGroup && str_comp(Message.m_aContent, pOldContent) == 0)
+		{
+			str_copy(Message.m_aContent, pNewContent);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Message updated successfully");
+			return true;
+		}
+	}
+
+	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Message not found");
+	return false;
 }
 
 // 消息发送
@@ -403,6 +449,8 @@ void CWordLibrary::SaveConfig()
 	char aPath[IO_MAX_PATH_LENGTH];
 	Storage()->GetCompletePath(IStorage::TYPE_SAVE, Config()->m_McWordLibraryConfig, aPath, sizeof(aPath));
 
+	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", aPath);
+
 	IOHANDLE File = Storage()->OpenFile(aPath, IOFLAG_WRITE, IStorage::TYPE_SAVE);
 	if(!File)
 	{
@@ -434,14 +482,12 @@ void CWordLibrary::SaveConfig()
 	}
 
 	io_close(File);
-	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Configuration saved successfully");
+	str_format(aBuf, sizeof(aBuf), "Saved %d groups and %d messages", (int)m_vGroups.size(), (int)m_vMessages.size());
+	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", aBuf);
 }
 
 void CWordLibrary::LoadConfig()
 {
-	char aPath[IO_MAX_PATH_LENGTH];
-	Storage()->GetCompletePath(IStorage::TYPE_SAVE, Config()->m_McWordLibraryConfig, aPath, sizeof(aPath));
-
 	// 清空现有数据
 	for(auto *pGroup : m_vGroups)
 	{
@@ -450,48 +496,21 @@ void CWordLibrary::LoadConfig()
 	m_vGroups.clear();
 	m_vMessages.clear();
 
-	// 读取配置文件
+	// 重新加载词库配置 - 参考ExecuteFile的实现
 	CLineReader LineReader;
-	if(!LineReader.OpenFile(Storage()->OpenFile(aPath, IOFLAG_READ, IStorage::TYPE_SAVE)))
+	if(LineReader.OpenFile(Storage()->OpenFile("settings_mclient.cfg", IOFLAG_READ, IStorage::TYPE_SAVE)))
 	{
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "No config file found, using defaults");
-		return;
-	}
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "loading word library from settings_mclient.cfg");
 
-	while(const char *pLine = LineReader.Get())
-	{
-		// 跳过注释和空行
-		if(pLine[0] == '#' || pLine[0] == '\n' || pLine[0] == '\r' || str_length(pLine) == 0)
-			continue;
-
-		// 解析命令
-		char aCommand[128];
-		char aArgs[512];
-		if(sscanf(pLine, "%s %[^\n]", aCommand, aArgs) == 2)
+		while(const char *pLine = LineReader.Get())
 		{
-			if(str_comp(aCommand, "mc_add_word_group") == 0)
+			if(str_startswith(pLine, "mc_add_word_group") ||
+				str_startswith(pLine, "mc_add_word_message"))
 			{
-				char aId[MAX_WORD_GROUP_ID_LENGTH];
-				char aName[MAX_WORD_GROUP_NAME_LENGTH];
-				int Removable = 1;
-				if(sscanf(aArgs, "\"%[^\"]\" \"%[^\"]\" %d", aId, aName, &Removable) >= 2)
-				{
-					AddGroup(aId, aName, Removable != 0);
-				}
-			}
-			else if(str_comp(aCommand, "mc_add_word_message") == 0)
-			{
-				char aGroupId[MAX_WORD_GROUP_ID_LENGTH];
-				char aMessage[MAX_WORD_MESSAGE_LENGTH];
-				if(sscanf(aArgs, "\"%[^\"]\" \"%[^\"]\"", aGroupId, aMessage) == 2)
-				{
-					AddMessage(aGroupId, aMessage);
-				}
+				Console()->ExecuteLineFlag(pLine, CFGFLAG_CLIENT, IConsole::CLIENT_ID_UNSPECIFIED);
 			}
 		}
 	}
-
-	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Configuration loaded successfully");
 }
 
 // 控制台命令实现
@@ -558,5 +577,29 @@ void CWordLibrary::ConListGroupMessages(IConsole::IResult *pResult, void *pUserD
 void CWordLibrary::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData)
 {
 	CWordLibrary *pThis = static_cast<CWordLibrary*>(pUserData);
-	pThis->SaveConfig();
+
+	char aBuf[512];
+
+	// 保存分组
+	for(auto *pGroup : pThis->m_vGroups)
+	{
+		// Imported groups don't get saved
+		if(pGroup->m_Imported)
+			continue;
+
+		str_format(aBuf, sizeof(aBuf), "mc_add_word_group \"%s\" \"%s\" %d",
+			pGroup->m_aId, pGroup->m_aDisplayName, pGroup->m_Removable ? 1 : 0);
+		pConfigManager->WriteLine(aBuf, ConfigDomain::MCLIENT);
+	}
+
+	// 保存消息
+	for(auto &Message : pThis->m_vMessages)
+	{
+		if(Message.m_pGroup && !Message.m_pGroup->m_Imported)
+		{
+			str_format(aBuf, sizeof(aBuf), "mc_add_word_message \"%s\" \"%s\"",
+				Message.m_pGroup->m_aId, Message.m_aContent);
+			pConfigManager->WriteLine(aBuf, ConfigDomain::MCLIENT);
+		}
+	}
 }

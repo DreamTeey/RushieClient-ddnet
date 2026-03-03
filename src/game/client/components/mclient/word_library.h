@@ -73,6 +73,8 @@ private:
 	static void ConAddWordMessage(IConsole::IResult *pResult, void *pUserData);
 	static void ConRemoveWordGroup(IConsole::IResult *pResult, void *pUserData);
 	static void ConRemoveWordMessage(IConsole::IResult *pResult, void *pUserData);
+	static void ConUpdateWordGroup(IConsole::IResult *pResult, void *pUserData);
+	static void ConUpdateWordMessage(IConsole::IResult *pResult, void *pUserData);
 	static void ConSendWord(IConsole::IResult *pResult, void *pUserData);
 	static void ConSendWordIndex(IConsole::IResult *pResult, void *pUserData);
 	static void ConListWordGroups(IConsole::IResult *pResult, void *pUserData);
@@ -86,11 +88,13 @@ public:
 	CWordGroup *AddGroup(const char *pId, const char *pDisplayName, bool Removable = true);
 	void RemoveGroup(const char *pId);
 	CWordGroup *FindGroup(const char *pId);
+	bool UpdateGroup(const char *pId, const char *pNewDisplayName);
 
 	// 消息管理
 	CWordMessage *AddMessage(const char *pGroupId, const char *pContent);
 	void RemoveMessage(const char *pGroupId, const char *pContent);
 	CWordMessage *FindMessage(const char *pGroupId, const char *pContent);
+	bool UpdateMessage(const char *pGroupId, const char *pOldContent, const char *pNewContent);
 
 	// 消息发送
 	bool SendRandomMessage(const char *pGroupId);
