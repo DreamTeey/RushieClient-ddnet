@@ -76,6 +76,7 @@
 #include "components/rclient/playermenu.h"
 
 #include "components/mclient/mclient.h"
+#include "components/mclient/word_library.h"
 
 //Tater
 #include "components/tclient/bg_draw.h"
@@ -254,6 +255,7 @@ public:
 
 	// MClient Components
 	CMClient m_MClient;
+	CWordLibrary m_WordLibrary;
 
 private:
 	std::vector<class CComponent *> m_vpAll;

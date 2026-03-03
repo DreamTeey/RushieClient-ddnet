@@ -143,6 +143,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Ghost,
 					      &m_TClient,
 					      &m_MClient,
+					      &m_WordLibrary,
 					      &m_RClient, // Must be before chat and players
 					      &m_Players,
 					      &m_RClientIndicator,

@@ -66,4 +66,9 @@ MACRO_CONFIG_INT(McFriendNotifyAutoRefresh, mc_friend_notify_auto_refresh, 1, 0,
 MACRO_CONFIG_INT(McFriendNotifyRefreshInterval, mc_friend_notify_refresh_interval, 30, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Friend notification refresh interval in seconds")
 MACRO_CONFIG_INT(McFriendNotifyOffline, mc_friend_notify_offline, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Friend offline notification")
 MACRO_CONFIG_INT(McFriendAutoGreet, mc_friend_auto_greet, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto greet friend when they join")
+
+// 词库功能相关配置：控制词库系统的启用和发送冷却时间
+MACRO_CONFIG_INT(McWordLibraryEnable, mc_word_library_enable, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable word library feature")
+MACRO_CONFIG_INT(McWordLibrarySendCooldown, mc_word_library_send_cooldown, 3, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Word library send cooldown in seconds")
+MACRO_CONFIG_STR(McWordLibraryConfig, mc_word_library_config, 128, "word_library.cfg", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Word library configuration file")
 MACRO_CONFIG_STR(McFriendAutoGreetText, mc_friend_auto_greet_text, 128, "Hi {name}!", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto greet text for friend joining")

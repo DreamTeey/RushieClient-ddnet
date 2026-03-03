@@ -847,6 +847,7 @@ private:
 	void RenderSettingsMClient(CUIRect MainView);
 	void RenderSettingsMClientSettings(CUIRect MainView);
 	void RenderSettingsMClientInfo(CUIRect MainView);
+	void RenderSettingsMClientWordLibrary(CUIRect MainView);
 
 	const CWarType *m_pRemoveWarType = nullptr;
 	void PopupConfirmRemoveWarType();
