@@ -556,20 +556,20 @@ void CMenus::RenderSettingsMClientWordLibrary(CUIRect MainView)
 		CooldownRow.VSplitLeft(100.0f, &CooldownLabel, &CooldownSlider);
 		Ui()->DoLabel(&CooldownLabel, MCLocalize("发送冷却时间 (秒)"), EditBoxFontSize, TEXTALIGN_ML);
 		// 不设置固定宽度，使用剩余空间
-		Ui()->DoScrollbarOption(&g_Config.m_McWordLibrarySendCooldown, &g_Config.m_McWordLibrarySendCooldown, &CooldownSlider, "", 1, 10);
+		Ui()->DoScrollbarOption(&g_Config.m_McWordLibrarySendCooldown, &g_Config.m_McWordLibrarySendCooldown, &CooldownSlider, "", 0, 30);
 		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
 
 		// 分组ID
 		static CLineInput s_GroupIdInput;
 		s_GroupIdInput.SetBuffer(s_aGroupId, sizeof(s_aGroupId));
-		s_GroupIdInput.SetEmptyText(MCLocalize("Group ID"));
+		s_GroupIdInput.SetEmptyText(MCLocalize("分组 ID"));
 		Column2.HSplitTop(HeadlineFontSize, &Button, &Column2);
 		Ui()->DoEditBox(&s_GroupIdInput, &Button, 12.0f);
 
 		// 分组名称
 		static CLineInput s_GroupNameInput;
 		s_GroupNameInput.SetBuffer(s_aGroupName, sizeof(s_aGroupName));
-		s_GroupNameInput.SetEmptyText(MCLocalize("Group Name"));
+		s_GroupNameInput.SetEmptyText(MCLocalize("分组名称"));
 		Column2.HSplitTop(MarginSmall, nullptr, &Column2);
 		Column2.HSplitTop(HeadlineFontSize, &Button, &Column2);
 		Ui()->DoEditBox(&s_GroupNameInput, &Button, 12.0f);
@@ -754,7 +754,7 @@ void CMenus::RenderSettingsMClientWordLibrary(CUIRect MainView)
 		// 消息内容输入框
 		static CLineInput s_MessageInput;
 		s_MessageInput.SetBuffer(s_aMessageContent, sizeof(s_aMessageContent));
-		s_MessageInput.SetEmptyText(MCLocalize("Message Content"));
+		s_MessageInput.SetEmptyText(MCLocalize("消息内容"));
 		Column4.HSplitTop(MarginSmall, nullptr, &Column4);
 		Column4.HSplitTop(HeadlineFontSize * 2.0f, &Button, &Column4);
 		Ui()->DoEditBox(&s_MessageInput, &Button, 12.0f);
