@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_MCLIENT_MCLIENT_H
 
 #include <game/client/component.h>
+#include <engine/console.h>
 #include <engine/friends.h>
 #include <engine/serverbrowser.h>
 
@@ -21,7 +22,7 @@ public:
 	virtual void OnInit() override;
 	virtual void OnConsoleInit() override;
 	virtual void OnRender() override;
-
+	virtual void OnMessage(int MsgType, void *pRawMsg) override;
 	// 克隆人皮肤复制方法
 	void CheckCloneSkin();
 	void UpdateRainbow();
@@ -31,6 +32,34 @@ public:
 	void UpdateFriendList();
 	void OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::CClient *pFriendClient);	
 	void OnFriendLeave(const char *pName, const char *pClan);
+
+	// 武器切换方法
+	void SwitchToLastWeapon();
+	void UpdateWeaponHistory(int CurrentWeapon);
+	bool HasWeapon(int Weapon) const;
+	static void ConSwitchLastWeaponCallback(IConsole::IResult *pResult, void *pUserData);
+
+	// 复读功能方法
+	void RepeatLastMessage();
+	static void ConRepeatLastMessageCallback(IConsole::IResult *pResult, void *pUserData);
+
+	// 自动加一方法
+	void CheckAutoPlusOne();
+	void ProcessAutoPlusOne(const char *pMessage, int ClientId);
+
+	// 钩子角度辅助方法
+	void UpdateHookAngleHelper();
+	void RenderHookAngleHelper();
+	void ApplyBestAngle(); // 应用最佳角度
+	static void ConToggleHookAngleHelperCallback(IConsole::IResult *pResult, void *pUserData);
+	static void ConHookAngleApplyCallback(IConsole::IResult *pResult, void *pUserData);
+	static void ConHookAngleResetCallback(IConsole::IResult *pResult, void *pUserData);
+	static void ConToggleAutoHookCallback(IConsole::IResult *pResult, void *pUserData);
+
+	// 钩子角度辅助碰撞检测
+	bool CheckHookCollision(const vec2& Start, const vec2& End, vec2& OutCollision, vec2& OutBeforeCollision) const;
+	bool IsHookPassable(const vec2& Start, const vec2& End) const;
+	bool SimulateHookFlight(const vec2& Start, float Angle, vec2& OutHitPos, float& OutDistance, bool& OutHitTeleport) const;
 
 	// 颜色转换函数
 	static int getIntFromColor(float Hue, float Sat, float LhT)
@@ -53,7 +82,7 @@ private:
 	void SendSkinUpdate(bool IsDummy);
 	bool CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId);
 	bool CheckDistanceClone(const vec2& LocalPos, int& TargetId);
-	
+
 	// 好友功能辅助方法
 	void ScanServersForFriends();
 	void HandleFriendClient(const CServerInfo *pServerInfo, const CServerInfo::CClient *pClient);
@@ -86,8 +115,37 @@ private:
 		char m_aClan[MAX_CLAN_LENGTH];
 		bool m_IsStillOnline;
 	};
-	SFriendState m_aFriendStates[IFriends::MAX_FRIENDS];
+	static SFriendState m_aFriendStates[IFriends::MAX_FRIENDS];
 	int m_NumFriendStates;
+
+	// 武器切换相关
+	int m_aLastWeapon[2]; // 记录最近使用的两个武器
+	int m_LastWeaponIndex;
+
+	// 复读功能相关
+	char m_aLastMessage[512]; // 记录最后一条消息
+	bool m_HasLastMessage; // 是否有记录的消息
+
+	// 自动加一相关
+	char m_aPreviousMessage[512]; // 记录上一条公屏消息
+	char m_aLastRepeatedMessage[512]; // 记录最后一条复读的消息
+	bool m_HasPreviousMessage; // 是否有上一条消息
+	float m_LastPlusOneTime; // 最后一次加一的时间
+
+	// 钩子角度辅助相关
+	bool m_HookAngleHelperEnabled; // 是否启用钩子角度辅助
+	float m_BestHookAngle; // 最佳钩子角度
+	bool m_HasBestAngle; // 是否找到最佳角度
+	
+	// 可视化增强
+	struct SAngleResult
+	{
+		float m_Angle;
+		float m_Distance;
+		bool m_Passable;
+		vec2 m_CollisionPos;
+	};
+	std::vector<SAngleResult> m_vAngleResults;
 };
 
 #endif

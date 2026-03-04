@@ -1313,6 +1313,8 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	{
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceEnable, RCLocalize("Enable voice chat"), &g_Config.m_RiVoiceEnable, &Column, LineSize);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceOffNonActive, RCLocalize("Off voice when window nonactive"), &g_Config.m_RiVoiceOffNonActive, &Column, LineSize);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceIgnoreDistance, RCLocalize("Ignore distance"), &g_Config.m_RiVoiceIgnoreDistance, &Column, LineSize);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceGroupGlobal, RCLocalize("Hear group members everywhere"), &g_Config.m_RiVoiceGroupGlobal, &Column, LineSize);
@@ -1428,6 +1430,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	Column.HSplitTop(LineSize, &Button, &Column);
 	Ui()->DoScrollbarOption(&g_Config.m_RiVoiceVolume, &g_Config.m_RiVoiceVolume, &Button, RCLocalize("Voice volume"), 0, 200);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_RiVoiceMicVolume, &g_Config.m_RiVoiceMicVolume, &Button, RCLocalize("Microphone volume"), 0, 300);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	static char s_aVoiceNameVolumeName[32];
 	static int s_VoiceNameVolumePercent = 100;
@@ -1461,12 +1466,86 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	Ui()->DoLabel(&Label, g_Config.m_RiVoiceNameVolumes[0] ? g_Config.m_RiVoiceNameVolumes : RCLocalize("Name volume list empty"), FontSize * 0.9f, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
+	static CUi::SDropDownState s_VoiceBackendDropDownState;
 	static CUi::SDropDownState s_VoiceInputDropDownState;
 	static CUi::SDropDownState s_VoiceOutputDropDownState;
+	static CScrollRegion s_VoiceBackendDropDownScrollRegion;
 	static CScrollRegion s_VoiceInputDropDownScrollRegion;
 	static CScrollRegion s_VoiceOutputDropDownScrollRegion;
+	s_VoiceBackendDropDownState.m_SelectionPopupContext.m_pScrollRegion = &s_VoiceBackendDropDownScrollRegion;
 	s_VoiceInputDropDownState.m_SelectionPopupContext.m_pScrollRegion = &s_VoiceInputDropDownScrollRegion;
 	s_VoiceOutputDropDownState.m_SelectionPopupContext.m_pScrollRegion = &s_VoiceOutputDropDownScrollRegion;
+
+	auto DoVoiceBackendDropDown = [&](CUIRect &ColumnRect, const char *pLabel, char *pConfigValue, int ConfigSize, CUi::SDropDownState &DropDownState) {
+		std::vector<std::string> vBackendNames;
+		std::vector<std::string> vBackendValues;
+		std::vector<const char *> vpBackendNames;
+
+		vBackendNames.emplace_back(RCLocalize("Auto", "Voice audio backend"));
+		vBackendValues.emplace_back("");
+
+		const int NumDrivers = SDL_GetNumAudioDrivers();
+		vBackendNames.reserve(NumDrivers + 2);
+		vBackendValues.reserve(NumDrivers + 2);
+
+		for(int i = 0; i < NumDrivers; i++)
+		{
+			const char *pDriver = SDL_GetAudioDriver(i);
+			if(pDriver && pDriver[0] != '\0')
+			{
+				vBackendNames.emplace_back(pDriver);
+				vBackendValues.emplace_back(pDriver);
+			}
+		}
+
+		if(pConfigValue[0] != '\0')
+		{
+			bool Found = false;
+			for(const std::string &Name : vBackendValues)
+			{
+				if(str_comp_nocase(Name.c_str(), pConfigValue) == 0)
+				{
+					Found = true;
+					break;
+				}
+			}
+			if(!Found)
+			{
+				vBackendNames.emplace_back(pConfigValue);
+				vBackendValues.emplace_back(pConfigValue);
+			}
+		}
+
+		vpBackendNames.reserve(vBackendNames.size());
+		for(const std::string &Name : vBackendNames)
+			vpBackendNames.push_back(Name.c_str());
+
+		int Selected = 0;
+		if(pConfigValue[0] != '\0')
+		{
+			for(size_t i = 1; i < vBackendValues.size(); i++)
+			{
+				if(str_comp_nocase(vBackendValues[i].c_str(), pConfigValue) == 0)
+				{
+					Selected = (int)i;
+					break;
+				}
+			}
+		}
+
+		CUIRect DropDownRect;
+		ColumnRect.HSplitTop(LineSize, &DropDownRect, &ColumnRect);
+		DropDownRect.VSplitLeft(120.0f, &Label, &DropDownRect);
+		Ui()->DoLabel(&Label, pLabel, FontSize, TEXTALIGN_ML);
+		const int NewSelected = Ui()->DoDropDown(&DropDownRect, Selected, vpBackendNames.data(), vpBackendNames.size(), DropDownState);
+		if(NewSelected != Selected)
+		{
+			if(NewSelected <= 0)
+				pConfigValue[0] = '\0';
+			else
+				str_copy(pConfigValue, vBackendValues[NewSelected].c_str(), ConfigSize);
+		}
+	};
 
 	auto DoVoiceDeviceDropDown = [&](CUIRect &ColumnRect, const char *pLabel, char *pConfigValue, int ConfigSize, bool Capture, CUi::SDropDownState &DropDownState) {
 		std::vector<std::string> vDeviceNames;
@@ -1539,6 +1618,12 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		}
 	};
 
+	DoVoiceBackendDropDown(Column, RCLocalize("Audio backend"), g_Config.m_RiVoiceAudioBackend, sizeof(g_Config.m_RiVoiceAudioBackend), s_VoiceBackendDropDownState);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize - 4, &Label, &Column);
+	Label.VSplitLeft(LineSize, nullptr, &Label);
+	Ui()->DoLabel(&Label, RCLocalize("If change backend u need restart game"), FontSize - 4, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoVoiceDeviceDropDown(Column, RCLocalize("Output device"), g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice), false, s_VoiceOutputDropDownState);
@@ -1546,6 +1631,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt;
 	Column.HSplitTop(LineSize, &Label, &Column);
 	DoLine_KeyReader(Label, s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt, RCLocalize("Voice PTT"), "+ri_voice_ptt");
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_RiVoicePttReleaseDelayMs, &g_Config.m_RiVoicePttReleaseDelayMs, &Button, RCLocalize("PTT release delay (ms)"), 0, 1000);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	static std::vector<CButtonContainer> s_vVoiceWhiteListButtonContainers = {{}, {}, {}};
 	DoLine_RadioMenu(Column, RCLocalize("Block people with:", "VoiceChat"),
