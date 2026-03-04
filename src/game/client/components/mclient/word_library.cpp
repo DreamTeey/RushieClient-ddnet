@@ -37,9 +37,13 @@ void CWordLibrary::OnConsoleInit()
 	Console()->Register("mc_send_word_index", "s[group_id] i[index]", CFGFLAG_CLIENT, ConSendWordIndex, this, "Send a message by index from a group");
 	Console()->Register("mc_list_word_groups", "", CFGFLAG_CLIENT, ConListWordGroups, this, "List all word groups");
 	Console()->Register("mc_list_group_messages", "s[group_id]", CFGFLAG_CLIENT, ConListGroupMessages, this, "List messages in a group");
+	Console()->Register("mc_bind_word_key", "s[group_id] i[key]", CFGFLAG_CLIENT, ConBindWordKey, this, "Bind a key to a word group");
 
 	// 注册配置保存回调
 	ConfigManager()->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::MCLIENT);
+
+	// 加载配置
+	LoadConfig();
 }
 
 void CWordLibrary::OnNewSnapshot()
@@ -168,6 +172,14 @@ CWordMessage *CWordLibrary::AddMessage(const char *pGroupId, const char *pConten
 	{
 		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Group not found");
 		return nullptr;
+	}
+
+	// 去重检测：检查消息是否已存在
+	CWordMessage *pExistingMessage = FindMessage(pGroupId, pContent);
+	if(pExistingMessage)
+	{
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Message already exists in this group");
+		return pExistingMessage;
 	}
 
 	// 创建新消息
@@ -513,6 +525,34 @@ void CWordLibrary::SaveConfig()
 	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", aBuf);
 }
 
+void CWordLibrary::LoadConfig()
+{
+	// 清空现有数据
+	for(auto *pGroup : m_vGroups)
+	{
+		delete pGroup;
+	}
+	m_vGroups.clear();
+	m_vMessages.clear();
+
+	// 重新加载词库配置 - 参考ExecuteFile的实现
+	CLineReader LineReader;
+	if(LineReader.OpenFile(Storage()->OpenFile("settings_mclient.cfg", IOFLAG_READ, IStorage::TYPE_SAVE)))
+	{
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "loading word library from settings_mclient.cfg");
+
+		while(const char *pLine = LineReader.Get())
+		{
+			if(str_startswith(pLine, "mc_add_word_group") ||
+				str_startswith(pLine, "mc_add_word_message") ||
+				str_startswith(pLine, "mc_bind_word_key"))
+			{
+				Console()->ExecuteLineFlag(pLine, CFGFLAG_CLIENT, IConsole::CLIENT_ID_UNSPECIFIED);
+			}
+		}
+	}
+}
+
 // 控制台命令实现
 void CWordLibrary::ConAddWordGroup(IConsole::IResult *pResult, void *pUserData)
 {
@@ -574,6 +614,14 @@ void CWordLibrary::ConListGroupMessages(IConsole::IResult *pResult, void *pUserD
 	pThis->ListGroupMessages(pGroupId);
 }
 
+void CWordLibrary::ConBindWordKey(IConsole::IResult *pResult, void *pUserData)
+{
+	CWordLibrary *pThis = static_cast<CWordLibrary*>(pUserData);
+	const char *pGroupId = pResult->GetString(0);
+	int Key = pResult->GetInteger(1);
+	pThis->BindKey(pGroupId, Key);
+}
+
 void CWordLibrary::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData)
 {
 	CWordLibrary *pThis = static_cast<CWordLibrary*>(pUserData);
@@ -599,6 +647,19 @@ void CWordLibrary::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUse
 		{
 			str_format(aBuf, sizeof(aBuf), "mc_add_word_message \"%s\" \"%s\"",
 				Message.m_pGroup->m_aId, Message.m_aContent);
+			pConfigManager->WriteLine(aBuf, ConfigDomain::MCLIENT);
+		}
+	}
+
+	// 保存快捷键绑定
+	for(auto *pGroup : pThis->m_vGroups)
+	{
+		if(pGroup->m_Imported)
+			continue;
+		if(pGroup->m_BoundKey != 0)
+		{
+			str_format(aBuf, sizeof(aBuf), "mc_bind_word_key \"%s\" %d",
+				pGroup->m_aId, pGroup->m_BoundKey);
 			pConfigManager->WriteLine(aBuf, ConfigDomain::MCLIENT);
 		}
 	}

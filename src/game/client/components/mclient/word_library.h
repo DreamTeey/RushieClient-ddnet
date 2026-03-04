@@ -80,6 +80,7 @@ private:
 	static void ConSendWordIndex(IConsole::IResult *pResult, void *pUserData);
 	static void ConListWordGroups(IConsole::IResult *pResult, void *pUserData);
 	static void ConListGroupMessages(IConsole::IResult *pResult, void *pUserData);
+	static void ConBindWordKey(IConsole::IResult *pResult, void *pUserData);
 
 public:
 	CWordLibrary();
@@ -110,8 +111,9 @@ public:
 	bool UnbindKey(const char *pGroupId);
 	CWordGroup *GetGroupByKey(int Key);
 
-	// 配置保存
+	// 配置保存/加载
 	void SaveConfig();
+	void LoadConfig();
 
 	// 获取列表
 	const std::vector<CWordGroup *>& GetGroups() const { return m_vGroups; }

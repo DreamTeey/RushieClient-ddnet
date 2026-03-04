@@ -611,7 +611,7 @@ void CMenus::RenderSettingsMClientWordLibrary(CUIRect MainView)
 		if(DoButtonLineSize_Menu(&s_LoadButton, MCLocalize("加载配置"), 0, &LoadButton, LineSize))
 		{
 			// 重新加载配置文件
-			Console()->ExecuteFile("settings_mclient.cfg", IStorage::TYPE_ALL);
+			GameClient()->m_WordLibrary.LoadConfig();
 		}
 
 		// 发送按钮
