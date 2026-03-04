@@ -610,8 +610,8 @@ void CMenus::RenderSettingsMClientWordLibrary(CUIRect MainView)
 		}
 		if(DoButtonLineSize_Menu(&s_LoadButton, MCLocalize("加载配置"), 0, &LoadButton, LineSize))
 		{
-			// 先清空现有词库数据
-			GameClient()->m_WordLibrary.LoadConfig();
+			// 重新加载配置文件
+			Console()->ExecuteFile("settings_mclient.cfg", IStorage::TYPE_ALL);
 		}
 
 		// 发送按钮

@@ -40,9 +40,6 @@ void CWordLibrary::OnConsoleInit()
 
 	// 注册配置保存回调
 	ConfigManager()->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::MCLIENT);
-
-	// 加载配置
-	LoadConfig();
 }
 
 void CWordLibrary::OnNewSnapshot()
@@ -275,9 +272,35 @@ bool CWordLibrary::SendRandomMessage(const char *pGroupId)
 		return false;
 	}
 
-	// 随机选择一条消息
-	int Index = secure_rand_below(vGroupMessages.size());
-	CWordMessage *pMessage = vGroupMessages[Index];
+	// 随机选择一条消息，避免重复
+	CWordMessage *pMessage = nullptr;
+	int Index = 0;
+	
+	// 如果只有一条消息，直接使用
+	if(vGroupMessages.size() == 1)
+	{
+		pMessage = vGroupMessages[0];
+	}
+	else
+	{
+		// 如果有多条消息，尝试选择不重复的消息
+		int Attempts = 0;
+		const int MaxAttempts = 10; // 最多尝试10次
+		
+		while(Attempts < MaxAttempts)
+		{
+			Index = secure_rand_below(vGroupMessages.size());
+			pMessage = vGroupMessages[Index];
+			
+			// 如果最后发送的消息为空，或者当前消息不等于最后发送的消息，则使用
+			if(m_aLastSentMessage[0] == 0 || str_comp(pMessage->m_aContent, m_aLastSentMessage) != 0)
+			{
+				break;
+			}
+			
+			Attempts++;
+		}
+	}
 
 	// 检查冷却时间
 	float CurrentTime = Client()->LocalTime();
@@ -290,6 +313,7 @@ bool CWordLibrary::SendRandomMessage(const char *pGroupId)
 	// 发送消息
 	GameClient()->m_Chat.SendChat(0, pMessage->m_aContent);
 	m_LastSendTime = CurrentTime;
+	str_copy(m_aLastSentMessage, pMessage->m_aContent);
 	pMessage->m_UsageCount++;
 	pMessage->m_LastUsed = time_get();
 	return true;
@@ -333,6 +357,7 @@ bool CWordLibrary::SendMessage(const char *pGroupId, int Index)
 	CWordMessage *pMessage = vGroupMessages[Index];
 	GameClient()->m_Chat.SendChat(0, pMessage->m_aContent);
 	m_LastSendTime = CurrentTime;
+	str_copy(m_aLastSentMessage, pMessage->m_aContent);
 	pMessage->m_UsageCount++;
 	pMessage->m_LastUsed = time_get();
 	return true;
@@ -486,33 +511,6 @@ void CWordLibrary::SaveConfig()
 	io_close(File);
 	str_format(aBuf, sizeof(aBuf), "Saved %d groups and %d messages", (int)m_vGroups.size(), (int)m_vMessages.size());
 	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", aBuf);
-}
-
-void CWordLibrary::LoadConfig()
-{
-	// 清空现有数据
-	for(auto *pGroup : m_vGroups)
-	{
-		delete pGroup;
-	}
-	m_vGroups.clear();
-	m_vMessages.clear();
-
-	// 重新加载词库配置 - 参考ExecuteFile的实现
-	CLineReader LineReader;
-	if(LineReader.OpenFile(Storage()->OpenFile("settings_mclient.cfg", IOFLAG_READ, IStorage::TYPE_SAVE)))
-	{
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "loading word library from settings_mclient.cfg");
-
-		while(const char *pLine = LineReader.Get())
-		{
-			if(str_startswith(pLine, "mc_add_word_group") ||
-				str_startswith(pLine, "mc_add_word_message"))
-			{
-				Console()->ExecuteLineFlag(pLine, CFGFLAG_CLIENT, IConsole::CLIENT_ID_UNSPECIFIED);
-			}
-		}
-	}
 }
 
 // 控制台命令实现

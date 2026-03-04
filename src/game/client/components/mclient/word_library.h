@@ -64,6 +64,7 @@ private:
 	std::vector<CWordGroup *> m_vGroups;  // 分组列表
 	std::vector<CWordMessage> m_vMessages;  // 消息列表
 	float m_LastSendTime = 0.0f;          // 最后发送时间
+	char m_aLastSentMessage[MAX_WORD_MESSAGE_LENGTH] = "";  // 最后发送的消息内容
 
 	// 配置保存回调
 	static void ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData);
@@ -109,9 +110,8 @@ public:
 	bool UnbindKey(const char *pGroupId);
 	CWordGroup *GetGroupByKey(int Key);
 
-	// 配置保存/加载
+	// 配置保存
 	void SaveConfig();
-	void LoadConfig();
 
 	// 获取列表
 	const std::vector<CWordGroup *>& GetGroups() const { return m_vGroups; }
