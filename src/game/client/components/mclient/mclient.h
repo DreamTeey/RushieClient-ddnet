@@ -23,6 +23,21 @@ public:
 	virtual void OnConsoleInit() override;
 	virtual void OnRender() override;
 	virtual void OnMessage(int MsgType, void *pRawMsg) override;
+	
+	// 最后勾我的玩家相关（公开给其他组件访问）
+	int m_LastHookedByClientId; // 最后勾我的玩家的客户端ID
+	int64_t m_LastHookedByTime; // 最后被勾的时间戳
+	char m_aLastHookedByName[MAX_NAME_LENGTH]; // 最后勾我的玩家的名称
+	
+	// 更新最后勾我的玩家
+	void UpdateLastHookedBy();
+
+	// 获取最后勾我的玩家ID
+	int GetLastHookedByClientId() const { return m_LastHookedByClientId; }
+
+	// 获取最后勾我的玩家名称
+	const char *GetLastHookedByName() const { return m_aLastHookedByName; }
+
 	// 克隆人皮肤复制方法
 	void CheckCloneSkin();
 	void UpdateRainbow();
