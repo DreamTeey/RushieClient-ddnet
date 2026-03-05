@@ -40,6 +40,11 @@ CMClient::CMClient()
 	m_HookAngleHelperEnabled = false;
 	m_BestHookAngle = 0.0f;
 	m_HasBestAngle = false;
+
+	// 初始化最后勾我的玩家
+	m_LastHookedByClientId = -1;
+	m_LastHookedByTime = 0;
+	mem_zero(m_aLastHookedByName, sizeof(m_aLastHookedByName));
 }
 
 void CMClient::OnInit()
@@ -100,16 +105,12 @@ void CMClient::OnMessage(int MsgType, void *pRawMsg)
 			str_copy(m_aLastMessage, pMessage, sizeof(m_aLastMessage));
 			m_HasLastMessage = true;
 			// dbg_msg("mclient", "Saved last message: %s", m_aLastMessage);
-		}
-		else
-		{
 			// 处理自动加一功能（只处理公屏消息，不处理私聊）
 			if(Team == 0 && g_Config.m_McAutoPlusOneEnable)
 			{
 				ProcessAutoPlusOne(pMessage, ClientId);
 			}
 		}
-
 	}
 }
 
@@ -161,6 +162,12 @@ void CMClient::OnRender()
 			UpdateWeaponHistory(CurrentWeapon);
 			s_LastWeapon = CurrentWeapon;
 		}
+	}
+
+	// 更新最后勾我的玩家
+	if(g_Config.m_McWordLibraryEnable)
+	{
+		UpdateLastHookedBy();
 	}
 }
 
@@ -1133,4 +1140,45 @@ void CMClient::ApplyBestAngle()
 	GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = MousePos;
 	
 	dbg_msg("mclient", "Applied angle %.2f deg", Angle * 180.0f / pi);
+}
+
+void CMClient::UpdateLastHookedBy()
+{
+	// 确保在游戏状态
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+
+	int LocalId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
+		return;
+
+	// 遍历所有客户端，寻找当前正在勾本地玩家的玩家
+	int64_t CurrentTime = time_get();
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		// 跳过本地玩家和无效客户端
+		if(i == LocalId)
+			continue;
+
+		// 检查客户端是否活跃
+		if(!GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			continue;
+
+		// 检查这个玩家是否正在勾本地玩家（使用m_Cur，即当前快照状态）
+		int HookedPlayer = GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_HookedPlayer;
+		if(HookedPlayer == LocalId)
+		{
+			// 更新最后勾我的玩家信息
+			m_LastHookedByClientId = i;
+			m_LastHookedByTime = CurrentTime;
+
+			// 获取玩家名称
+			const char *pName = GameClient()->m_aClients[i].m_aName;
+			if(pName[0])
+			{
+				str_copy(m_aLastHookedByName, pName, sizeof(m_aLastHookedByName));
+			}
+			return;
+		}
+	}
 }

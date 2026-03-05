@@ -1,4 +1,5 @@
 #include "word_library.h"
+#include "mclient.h"
 #include <game/client/gameclient.h>
 #include <game/client/components/chat.h>
 #include <game/client/components/controls.h>
@@ -38,6 +39,7 @@ void CWordLibrary::OnConsoleInit()
 	Console()->Register("mc_list_word_groups", "", CFGFLAG_CLIENT, ConListWordGroups, this, "List all word groups");
 	Console()->Register("mc_list_group_messages", "s[group_id]", CFGFLAG_CLIENT, ConListGroupMessages, this, "List messages in a group");
 	Console()->Register("mc_bind_word_key", "s[group_id] i[key]", CFGFLAG_CLIENT, ConBindWordKey, this, "Bind a key to a word group");
+	Console()->Register("mc_set_word_group_atlasthooker", "s[group_id] i[value]", CFGFLAG_CLIENT, ConSetWordGroupAtLastHooker, this, "Set whether to @mention last hooker when sending messages");
 
 	// 注册配置保存回调
 	ConfigManager()->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::MCLIENT);
@@ -322,8 +324,25 @@ bool CWordLibrary::SendRandomMessage(const char *pGroupId)
 		return false;
 	}
 
+	// 准备消息内容
+	char aMessage[MAX_WORD_MESSAGE_LENGTH];
+	str_copy(aMessage, pMessage->m_aContent, sizeof(aMessage));
+
+	// 如果分组启用了@最后勾我的玩家
+	if(pGroup->m_AtLastHooker)
+	{
+		const char *pHookerName = GetLastHookerName();
+		if(pHookerName && pHookerName[0])
+		{
+			// 将消息格式化为 "@玩家名 消息内容"
+			char aTemp[MAX_WORD_MESSAGE_LENGTH];
+			str_format(aTemp, sizeof(aTemp), "@%s %s", pHookerName, pMessage->m_aContent);
+			str_copy(aMessage, aTemp, sizeof(aMessage));
+		}
+	}
+
 	// 发送消息
-	GameClient()->m_Chat.SendChat(0, pMessage->m_aContent);
+	GameClient()->m_Chat.SendChat(0, aMessage);
 	m_LastSendTime = CurrentTime;
 	str_copy(m_aLastSentMessage, pMessage->m_aContent);
 	pMessage->m_UsageCount++;
@@ -365,9 +384,28 @@ bool CWordLibrary::SendMessage(const char *pGroupId, int Index)
 		return false;
 	}
 
-	// 发送消息
+	// 获取要发送的消息
 	CWordMessage *pMessage = vGroupMessages[Index];
-	GameClient()->m_Chat.SendChat(0, pMessage->m_aContent);
+
+	// 准备消息内容
+	char aMessage[MAX_WORD_MESSAGE_LENGTH];
+	str_copy(aMessage, pMessage->m_aContent, sizeof(aMessage));
+
+	// 如果分组启用了@最后勾我的玩家
+	if(pGroup->m_AtLastHooker)
+	{
+		const char *pHookerName = GetLastHookerName();
+		if(pHookerName && pHookerName[0])
+		{
+			// 将消息格式化为 "@玩家名 消息内容"
+			char aTemp[MAX_WORD_MESSAGE_LENGTH];
+			str_format(aTemp, sizeof(aTemp), "%s: %s", pHookerName, pMessage->m_aContent);
+			str_copy(aMessage, aTemp, sizeof(aMessage));
+		}
+	}
+
+	// 发送消息
+	GameClient()->m_Chat.SendChat(0, aMessage);
 	m_LastSendTime = CurrentTime;
 	str_copy(m_aLastSentMessage, pMessage->m_aContent);
 	pMessage->m_UsageCount++;
@@ -482,6 +520,12 @@ CWordGroup *CWordLibrary::GetGroupByKey(int Key)
 	return nullptr;
 }
 
+const char *CWordLibrary::GetLastHookerName()
+{
+	// 直接访问CMClient的公共成员变量
+	return GameClient()->m_MClient.m_aLastHookedByName;
+}
+
 // 配置保存/加载
 void CWordLibrary::SaveConfig()
 {
@@ -507,6 +551,14 @@ void CWordLibrary::SaveConfig()
 		str_format(aBuf, sizeof(aBuf), "mc_add_word_group \"%s\" \"%s\" %d\n", 
 			pGroup->m_aId, pGroup->m_aDisplayName, pGroup->m_Removable ? 1 : 0);
 		io_write(File, aBuf, str_length(aBuf));
+
+		// 保存分组设置（@最后勾我玩家）
+		if(pGroup->m_AtLastHooker)
+		{
+			str_format(aBuf, sizeof(aBuf), "mc_set_word_group_atlasthooker \"%s\" 1\n", 
+				pGroup->m_aId);
+			io_write(File, aBuf, str_length(aBuf));
+		}
 	}
 
 	// 保存消息
@@ -545,7 +597,8 @@ void CWordLibrary::LoadConfig()
 		{
 			if(str_startswith(pLine, "mc_add_word_group") ||
 				str_startswith(pLine, "mc_add_word_message") ||
-				str_startswith(pLine, "mc_bind_word_key"))
+				str_startswith(pLine, "mc_bind_word_key") ||
+				str_startswith(pLine, "mc_set_word_group_atlasthooker"))
 			{
 				Console()->ExecuteLineFlag(pLine, CFGFLAG_CLIENT, IConsole::CLIENT_ID_UNSPECIFIED);
 			}
@@ -622,6 +675,19 @@ void CWordLibrary::ConBindWordKey(IConsole::IResult *pResult, void *pUserData)
 	pThis->BindKey(pGroupId, Key);
 }
 
+void CWordLibrary::ConSetWordGroupAtLastHooker(IConsole::IResult *pResult, void *pUserData)
+{
+	CWordLibrary *pThis = static_cast<CWordLibrary*>(pUserData);
+	const char *pGroupId = pResult->GetString(0);
+	int Value = pResult->GetInteger(1);
+
+	CWordGroup *pGroup = pThis->FindGroup(pGroupId);
+	if(pGroup)
+	{
+		pGroup->m_AtLastHooker = Value;
+	}
+}
+
 void CWordLibrary::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData)
 {
 	CWordLibrary *pThis = static_cast<CWordLibrary*>(pUserData);
@@ -660,6 +726,19 @@ void CWordLibrary::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUse
 		{
 			str_format(aBuf, sizeof(aBuf), "mc_bind_word_key \"%s\" %d",
 				pGroup->m_aId, pGroup->m_BoundKey);
+			pConfigManager->WriteLine(aBuf, ConfigDomain::MCLIENT);
+		}
+	}
+
+	// 保存@最后勾我玩家设置
+	for(auto *pGroup : pThis->m_vGroups)
+	{
+		if(pGroup->m_Imported)
+			continue;
+		if(pGroup->m_AtLastHooker)
+		{
+			str_format(aBuf, sizeof(aBuf), "mc_set_word_group_atlasthooker \"%s\" %d",
+				pGroup->m_aId, pGroup->m_AtLastHooker);
 			pConfigManager->WriteLine(aBuf, ConfigDomain::MCLIENT);
 		}
 	}

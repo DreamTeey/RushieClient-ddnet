@@ -5,6 +5,7 @@
 #include <engine/console.h>
 #include <engine/config.h>
 #include <engine/shared/config.h>
+#include <engine/shared/protocol.h>
 #include <base/vmath.h>
 #include <vector>
 #include <string>
@@ -25,6 +26,7 @@ public:
 	ColorRGBA m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);  // 分组颜色
 	bool m_Removable = true;       // 是否可删除
 	bool m_Imported = false;       // 是否导入的
+	int m_AtLastHooker = 0;        // 发送时是否@最后一个勾我的玩家
 	int m_Index = 0;               // 分组索引
 	int m_BoundKey = 0;            // 绑定的快捷键
 
@@ -65,6 +67,7 @@ private:
 	std::vector<CWordMessage> m_vMessages;  // 消息列表
 	float m_LastSendTime = 0.0f;          // 最后发送时间
 	char m_aLastSentMessage[MAX_WORD_MESSAGE_LENGTH] = "";  // 最后发送的消息内容
+	char m_aLastHookerName[MAX_NAME_LENGTH] = "";  // 最后一个勾我的玩家的名称
 
 	// 配置保存回调
 	static void ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData);
@@ -81,6 +84,7 @@ private:
 	static void ConListWordGroups(IConsole::IResult *pResult, void *pUserData);
 	static void ConListGroupMessages(IConsole::IResult *pResult, void *pUserData);
 	static void ConBindWordKey(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetWordGroupAtLastHooker(IConsole::IResult *pResult, void *pUserData);
 
 public:
 	CWordLibrary();
@@ -91,6 +95,7 @@ public:
 	void RemoveGroup(const char *pId);
 	CWordGroup *FindGroup(const char *pId);
 	bool UpdateGroup(const char *pId, const char *pNewDisplayName);
+	bool UpdateGroupSettings(const char *pId, bool AtLastHooker);
 
 	// 消息管理
 	CWordMessage *AddMessage(const char *pGroupId, const char *pContent);
@@ -101,6 +106,9 @@ public:
 	// 消息发送
 	bool SendRandomMessage(const char *pGroupId);
 	bool SendMessage(const char *pGroupId, int Index);
+
+	// 获取最后一个勾我的玩家名称
+	const char *GetLastHookerName();
 
 	// 列表功能
 	void ListGroups();
