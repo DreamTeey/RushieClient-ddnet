@@ -69,7 +69,6 @@ public:
 	static void ConToggleHookAngleHelperCallback(IConsole::IResult *pResult, void *pUserData);
 	static void ConHookAngleApplyCallback(IConsole::IResult *pResult, void *pUserData);
 	static void ConHookAngleResetCallback(IConsole::IResult *pResult, void *pUserData);
-	static void ConToggleAutoHookCallback(IConsole::IResult *pResult, void *pUserData);
 
 	// 钩子角度辅助碰撞检测
 	bool CheckHookCollision(const vec2& Start, const vec2& End, vec2& OutCollision, vec2& OutBeforeCollision) const;

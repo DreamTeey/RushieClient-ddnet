@@ -2,7 +2,6 @@
 #include "mclient.h"
 #include <game/client/gameclient.h>
 #include <game/client/components/chat.h>
-#include <game/client/components/controls.h>
 #include <game/client/components/menus.h>
 #include <engine/shared/config.h>
 #include <engine/console.h>

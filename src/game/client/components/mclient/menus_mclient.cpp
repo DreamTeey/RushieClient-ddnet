@@ -9,7 +9,6 @@
 #include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
-#include <engine/shared/linereader.h>
 #include <engine/storage.h>
 #include <engine/textrender.h>
 

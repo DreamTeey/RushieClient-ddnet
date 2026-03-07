@@ -6,7 +6,6 @@
 #include <engine/config.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol.h>
-#include <base/vmath.h>
 #include <vector>
 #include <string>
 
@@ -23,7 +22,6 @@ class CWordGroup
 public:
 	char m_aId[MAX_WORD_GROUP_ID_LENGTH] = "";       // 内部标识符（如"greeting"）
 	char m_aDisplayName[MAX_WORD_GROUP_NAME_LENGTH] = "";  // 显示名称（如"问候"）
-	ColorRGBA m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);  // 分组颜色
 	bool m_Removable = true;       // 是否可删除
 	bool m_Imported = false;       // 是否导入的
 	int m_AtLastHooker = 0;        // 发送时是否@最后一个勾我的玩家
@@ -78,8 +76,6 @@ private:
 	static void ConAddWordMessage(IConsole::IResult *pResult, void *pUserData);
 	static void ConRemoveWordGroup(IConsole::IResult *pResult, void *pUserData);
 	static void ConRemoveWordMessage(IConsole::IResult *pResult, void *pUserData);
-	static void ConUpdateWordGroup(IConsole::IResult *pResult, void *pUserData);
-	static void ConUpdateWordMessage(IConsole::IResult *pResult, void *pUserData);
 	static void ConSendWord(IConsole::IResult *pResult, void *pUserData);
 	static void ConSendWordIndex(IConsole::IResult *pResult, void *pUserData);
 	static void ConListWordGroups(IConsole::IResult *pResult, void *pUserData);
@@ -96,7 +92,6 @@ public:
 	void RemoveGroup(const char *pId);
 	CWordGroup *FindGroup(const char *pId);
 	bool UpdateGroup(const char *pId, const char *pNewDisplayName);
-	bool UpdateGroupSettings(const char *pId, bool AtLastHooker);
 
 	// 消息管理
 	CWordMessage *AddMessage(const char *pGroupId, const char *pContent);
