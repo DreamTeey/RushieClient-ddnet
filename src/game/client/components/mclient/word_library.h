@@ -6,6 +6,7 @@
 #include <engine/config.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol.h>
+#include <base/system.h>
 #include <vector>
 #include <string>
 

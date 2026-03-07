@@ -403,7 +403,6 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 
 	char aBuf[128 + IO_MAX_PATH_LENGTH];
-	CUIRect MClientConfig;
 
 	LeftView.HSplitTop(LineSize * 2.0f, &Button, &LeftView);
 

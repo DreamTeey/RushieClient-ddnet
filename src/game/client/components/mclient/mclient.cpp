@@ -707,7 +707,6 @@ bool CMClient::SimulateHookFlight(const vec2& Start, float Angle, vec2& OutHitPo
 	const int MaxHookTicks = 5 * Client()->GameTickSpeed();
 	
 	// 模拟钩子飞行
-	bool HookEnteredTelehook = false;
 	OutHitTeleport = false;
 	
 	for(int HookTick = 0; HookTick < MaxHookTicks; ++HookTick)
@@ -740,7 +739,6 @@ bool CMClient::SimulateHookFlight(const vec2& Start, float Angle, vec2& OutHitPo
 		// 碰撞到钩子传送门
 		if(Hit == TILE_TELEINHOOK)
 		{
-			HookEnteredTelehook = true;
 			OutHitTeleport = true;
 			
 			// 检查传送出口
@@ -850,11 +848,6 @@ void CMClient::UpdateHookAngleHelper()
 	// 扫描寻找最佳角度
 	m_HasBestAngle = false;
 	m_BestHookAngle = 0.0f;
-
-	int CurrentWeapon = GameClient()->m_Snap.m_pLocalCharacter ? GameClient()->m_Snap.m_pLocalCharacter->m_Weapon : 0;
-
-	// 钩子最大长度（从tuning参数获取）
-	float MaxHookLength = 800.0f; // 默认值，可以从tuning参数读取
 
 	// 清空之前的扫描结果
 	m_vAngleResults.clear();
@@ -1011,9 +1004,6 @@ void CMClient::RenderHookAngleHelper()
 	// 绘制扫描范围（扇形）
 	if(g_Config.m_McHookAngleShowScanRange && !m_vAngleResults.empty())
 	{
-		// 获取当前武器的最大距离
-		float MaxDistance = 0.0f;
-		int CurrentWeapon = GameClient()->m_Snap.m_pLocalCharacter ? GameClient()->m_Snap.m_pLocalCharacter->m_Weapon : 0;
 		
 		Graphics()->TextureClear();
 		Graphics()->LinesBegin();
@@ -1075,9 +1065,6 @@ void CMClient::RenderHookAngleHelper()
 		// 计算最佳角度的终点
 		vec2 BestDirection = vec2(cos(m_BestHookAngle), sin(m_BestHookAngle));
 
-		// 获取当前武器的最大距离
-		float MaxDistance = 0.0f;
-		int CurrentWeapon = GameClient()->m_Snap.m_pLocalCharacter ? GameClient()->m_Snap.m_pLocalCharacter->m_Weapon : 0;
 		
 		// 检测碰撞点
 		vec2 CollisionPos, BeforeCollisionPos;

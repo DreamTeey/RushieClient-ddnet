@@ -127,12 +127,12 @@ void CWordLibrary::RemoveGroup(const char *pId)
 	}
 
 	// 从分组列表中移除
-	for(auto it = m_vGroups.begin(); it != m_vGroups.end(); ++it)
+	for(auto groupIt = m_vGroups.begin(); groupIt != m_vGroups.end(); ++groupIt)
 	{
-		if(*it == pGroup)
+		if(*groupIt == pGroup)
 		{
-			delete *it;
-			m_vGroups.erase(it);
+			delete *groupIt;
+			m_vGroups.erase(groupIt);
 			break;
 		}
 	}
