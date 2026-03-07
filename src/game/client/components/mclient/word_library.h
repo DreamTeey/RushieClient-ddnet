@@ -66,7 +66,6 @@ private:
 	std::vector<CWordMessage> m_vMessages;  // 消息列表
 	float m_LastSendTime = 0.0f;          // 最后发送时间
 	char m_aLastSentMessage[MAX_WORD_MESSAGE_LENGTH] = "";  // 最后发送的消息内容
-	char m_aLastHookerName[MAX_NAME_LENGTH] = "";  // 最后一个勾我的玩家的名称
 	std::vector<bool> m_vKeyStates;  // 按键状态跟踪
 
 	// 配置保存回调

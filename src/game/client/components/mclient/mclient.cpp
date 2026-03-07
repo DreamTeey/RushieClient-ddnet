@@ -386,8 +386,8 @@ void CMClient::CopyPlayerSkin(int TargetId, bool IsDummy)
     {
         if(str_comp(g_Config.m_ClDummySkin, pTarget->m_aSkinName) != 0 ||
            g_Config.m_ClDummyUseCustomColor != pTarget->m_UseCustomColor ||
-           g_Config.m_ClDummyColorBody != pTarget->m_ColorBody ||
-           g_Config.m_ClDummyColorFeet != pTarget->m_ColorFeet)
+           (unsigned int)g_Config.m_ClDummyColorBody != pTarget->m_ColorBody ||
+           (unsigned int)g_Config.m_ClDummyColorFeet != pTarget->m_ColorFeet)
         {
             str_copy(g_Config.m_ClDummySkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClDummySkin));
             g_Config.m_ClDummyUseCustomColor = pTarget->m_UseCustomColor;
@@ -400,8 +400,8 @@ void CMClient::CopyPlayerSkin(int TargetId, bool IsDummy)
     {
         if(str_comp(g_Config.m_ClPlayerSkin, pTarget->m_aSkinName) != 0 ||
            g_Config.m_ClPlayerUseCustomColor != pTarget->m_UseCustomColor ||
-           g_Config.m_ClPlayerColorBody != pTarget->m_ColorBody ||
-           g_Config.m_ClPlayerColorFeet != pTarget->m_ColorFeet)
+           (unsigned int)g_Config.m_ClPlayerColorBody != pTarget->m_ColorBody ||
+           (unsigned int)g_Config.m_ClPlayerColorFeet != pTarget->m_ColorFeet)
         {
             str_copy(g_Config.m_ClPlayerSkin, pTarget->m_aSkinName, sizeof(g_Config.m_ClPlayerSkin));
             g_Config.m_ClPlayerUseCustomColor = pTarget->m_UseCustomColor;
