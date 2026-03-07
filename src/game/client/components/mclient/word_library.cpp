@@ -53,11 +53,22 @@ void CWordLibrary::OnNewSnapshot()
 	// 检查所有绑定的快捷键
 	if(Config()->m_McWordLibraryEnable)
 	{
-		for(auto *pGroup : m_vGroups)
+		// 确保按键状态向量大小与分组数量一致
+		if(m_vKeyStates.size() != m_vGroups.size())
+			m_vKeyStates.resize(m_vGroups.size(), false);
+
+		for(size_t i = 0; i < m_vGroups.size(); ++i)
 		{
-			if(pGroup->m_BoundKey != 0 && Input()->KeyIsPressed(pGroup->m_BoundKey))
+			auto *pGroup = m_vGroups[i];
+			if(pGroup->m_BoundKey != 0)
 			{
-				SendRandomMessage(pGroup->m_aId);
+				bool KeyPressed = Input()->KeyIsPressed(pGroup->m_BoundKey);
+				// 只在按键刚刚按下时触发消息发送
+				if(KeyPressed && !m_vKeyStates[i])
+				{
+					SendRandomMessage(pGroup->m_aId);
+				}
+				m_vKeyStates[i] = KeyPressed;
 			}
 		}
 	}
@@ -80,6 +91,9 @@ CWordGroup *CWordLibrary::AddGroup(const char *pId, const char *pDisplayName, bo
 	CWordGroup *pGroup = new CWordGroup(pId, pDisplayName, Removable);
 	pGroup->m_Index = m_vGroups.size();
 	m_vGroups.push_back(pGroup);
+
+	// 同步更新按键状态向量
+	m_vKeyStates.push_back(false);
 
 	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Group added successfully");
 	return pGroup;
@@ -129,6 +143,9 @@ void CWordLibrary::RemoveGroup(const char *pId)
 	{
 		m_vGroups[i]->m_Index = i;
 	}
+
+	// 同步更新按键状态向量
+	m_vKeyStates.resize(m_vGroups.size(), false);
 
 	Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Group removed successfully");
 }
@@ -320,7 +337,6 @@ bool CWordLibrary::SendRandomMessage(const char *pGroupId)
 	float CurrentTime = Client()->LocalTime();
 	if(CurrentTime - m_LastSendTime < Config()->m_McWordLibrarySendCooldown)
 	{
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Cooldown active");
 		return false;
 	}
 
@@ -336,7 +352,7 @@ bool CWordLibrary::SendRandomMessage(const char *pGroupId)
 		{
 			// 将消息格式化为 "@玩家名 消息内容"
 			char aTemp[MAX_WORD_MESSAGE_LENGTH];
-			str_format(aTemp, sizeof(aTemp), "@%s %s", pHookerName, pMessage->m_aContent);
+			str_format(aTemp, sizeof(aTemp), "%s: %s", pHookerName, pMessage->m_aContent);
 			str_copy(aMessage, aTemp, sizeof(aMessage));
 		}
 	}
@@ -380,7 +396,6 @@ bool CWordLibrary::SendMessage(const char *pGroupId, int Index)
 	float CurrentTime = Client()->LocalTime();
 	if(CurrentTime - m_LastSendTime < Config()->m_McWordLibrarySendCooldown)
 	{
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", "Cooldown active");
 		return false;
 	}
 
@@ -586,6 +601,7 @@ void CWordLibrary::LoadConfig()
 	}
 	m_vGroups.clear();
 	m_vMessages.clear();
+	m_vKeyStates.clear();
 
 	// 重新加载词库配置 - 参考ExecuteFile的实现
 	CLineReader LineReader;
