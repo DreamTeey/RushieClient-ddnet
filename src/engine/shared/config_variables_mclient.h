@@ -72,3 +72,6 @@ MACRO_CONFIG_INT(McWordLibraryEnable, mc_word_library_enable, 1, 0, 1, CFGFLAG_C
 MACRO_CONFIG_INT(McWordLibrarySendCooldown, mc_word_library_send_cooldown, 3, 1, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Word library send cooldown in seconds")
 MACRO_CONFIG_STR(McWordLibraryConfig, mc_word_library_config, 128, "word_library.cfg", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Word library configuration file")
 MACRO_CONFIG_STR(McFriendAutoGreetText, mc_friend_auto_greet_text, 128, "Hi {name}!", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto greet text for friend joining")
+
+// 武器弹道可视化相关配置
+MACRO_CONFIG_INT(McWeaponTrajectoryEnable, mc_weapon_trajectory_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable weapon trajectory visualization")

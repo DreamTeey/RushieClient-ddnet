@@ -77,6 +77,7 @@
 
 #include "components/mclient/mclient.h"
 #include "components/mclient/word_library.h"
+#include "components/mclient/weapon_trajectory.h"
 
 //Tater
 #include "components/tclient/bg_draw.h"
@@ -256,6 +257,7 @@ public:
 	// MClient Components
 	CMClient m_MClient;
 	CWordLibrary m_WordLibrary;
+	CWeaponTrajectory m_WeaponTrajectory;
 
 private:
 	std::vector<class CComponent *> m_vpAll;

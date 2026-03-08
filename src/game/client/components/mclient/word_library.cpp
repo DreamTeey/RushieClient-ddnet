@@ -334,8 +334,13 @@ bool CWordLibrary::SendRandomMessage(const char *pGroupId)
 
 	// 检查冷却时间
 	float CurrentTime = Client()->LocalTime();
-	if(CurrentTime - m_LastSendTime < Config()->m_McWordLibrarySendCooldown)
+	float TimeSinceLastSend = CurrentTime - m_LastSendTime;
+	float Cooldown = Config()->m_McWordLibrarySendCooldown;
+	if(TimeSinceLastSend < Cooldown)
 	{
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "Cooldown: %.1fs remaining", Cooldown - TimeSinceLastSend);
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "word_library", aBuf);
 		return false;
 	}
 
