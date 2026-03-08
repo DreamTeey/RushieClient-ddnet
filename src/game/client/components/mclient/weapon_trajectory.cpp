@@ -41,15 +41,15 @@ void CWeaponTrajectory::OnRender()
 	if(Client.m_Team == TEAM_SPECTATORS)
 		return;
 
-	int CurWeapon = Client.m_Predicted.m_ActiveWeapon;
+	int CurWeapon = GameClient()->m_PredictedChar.m_ActiveWeapon;
 
 	if(CurWeapon == WEAPON_HAMMER || CurWeapon == WEAPON_NINJA)
 		return;
 
 	const CTuningParams *pTuning = GameClient()->GetTuning(0);
 
-	vec2 PlayerPos = Client.m_Predicted.m_Pos;
-	vec2 TargetVec = vec2((float)Client.m_Predicted.m_Input.m_TargetX, (float)Client.m_Predicted.m_Input.m_TargetY);
+	vec2 PlayerPos = GameClient()->m_LocalCharacterPos;
+	vec2 TargetVec = vec2((float)GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_TargetX, (float)GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_TargetY);
 	if(length(TargetVec) < 0.001f)
 		return;
 	vec2 PlayerDir = normalize(TargetVec);
