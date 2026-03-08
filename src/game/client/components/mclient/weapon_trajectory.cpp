@@ -57,6 +57,7 @@ void CWeaponTrajectory::OnRender()
 	// Match prediction fire start: m_Pos + Direction * m_ProximityRadius * 0.75f
 	// Note: In client render code we only have the predicted CCharacterCore (no CEntity::m_ProximityRadius),
 	// so use the physical tee size as an approximation.
+	
 	vec2 ProjStartPos = PlayerPos + PlayerDir * (CCharacterCore::PhysicalSize() * 0.75f);
 
 	auto TuneZoneForPos = [this](vec2 Pos) {
