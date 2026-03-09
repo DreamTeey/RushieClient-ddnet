@@ -2607,10 +2607,10 @@ if(CLIENT)
     components/mclient/mclient.h
     components/mclient/mclient_friend.cpp
     components/mclient/menus_mclient.cpp
-    components/mclient/word_library.cpp
-    components/mclient/word_library.h
     components/mclient/weapon_trajectory.cpp
     components/mclient/weapon_trajectory.h
+    components/mclient/word_library.cpp
+    components/mclient/word_library.h
     components/scoreboard.cpp
     components/scoreboard.h
     components/skins.cpp
