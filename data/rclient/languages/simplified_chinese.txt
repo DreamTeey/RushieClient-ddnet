@@ -716,3 +716,149 @@ The command is ran in console not chat
 
 Show when microphone active
 == 麦克风激活时显示
+
+Find checkpoint
+== 查找检查点
+
+Play sound on move when window inactive
+== 窗口非活动时移动播放声音
+
+Choose sound:
+== 选择声音：
+
+[HammerHit]
+Show Hammer Hit:
+== 显示锤子击中：
+
+[HammerHit]
+No effect
+== 无效果
+
+[HammerHit]
+No Sound
+== 无声音
+
+[HammerHit]
+Normal
+== 正常
+
+Show frozen HUD only for warlist teammates
+== 仅对战争列表队友显示冻结 HUD
+
+Group mode
+== 群组模式
+
+Group token
+== 群组令牌
+
+FastInput version:
+== FastInput 版本：
+
+Hear group members everywhere
+== 随处听到群组成员
+
+Microphone volume
+== 麦克风音量
+
+Off voice when window nonactive
+== 窗口非活动时关闭语音
+
+Audio backend
+== 音频后端
+
+If change backend u need restart game
+== 更改后端需要重启游戏
+
+PTT release delay (ms)
+== 按键通话释放延迟（毫秒）
+
+[VoiceChat]
+Hear people that:
+== 听到的人员：
+
+[VoiceChat]
+You see
+== 你看到的
+
+[VoiceChat]
+In team
+== 队伍中的
+
+Hear from camera center while spectating
+== 观战从摄像机中心收听
+
+Hear observers (inactive players, not /spec)
+== 听到观察者（非活跃玩家，非观战）
+
+Show overlay
+== 显示覆盖层
+
+VAD allow list
+== 语音激活允许列表
+
+Hear players using voice activation
+== 听到使用语音激活的玩家
+
+Show voice ping
+== 显示语音延迟
+
+Voice activation (VAD)
+== 语音激活（VAD）
+
+Add in whitelist
+== 添加到白名单
+
+Add in blacklist
+== 添加到黑名单
+
+VAD allow add
+== 允许语音激活
+
+VAD allow remove
+== 移除语音激活允许
+
+Show indicator in scoreboard
+== 在记分板显示指示器
+
+Size of indicator in scoreboard
+== 记分板指示器大小
+
+Find finish
+== 查找终点
+
+Player menu
+== 玩家菜单
+
+Devices
+== 设备
+
+Listening & Groups
+== 收听与群组
+
+Mix & Processing
+== 混合与处理
+
+[VoiceChat]
+Test mode
+== 测试模式
+
+[VoiceChat]
+Off
+== 关闭
+
+[VoiceChat]
+Local
+== 本地
+
+[VoiceChat]
+Server
+== 服务器
+
+Overlay
+== 覆盖层
+
+Noise suppressor (RNNoise)
+== 降噪器（RNNoise）
+
+Noise suppressor
+== 降噪器
