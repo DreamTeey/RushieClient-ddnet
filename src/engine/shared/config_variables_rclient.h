@@ -23,6 +23,9 @@ MACRO_CONFIG_STR(RiBlockedContentPartialReplacementChar, ri_blocked_content_part
 MACRO_CONFIG_INT(RiScoreboardFriendMark, ri_scoreboard_friendmark, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show friend mark (♥) in scoreboard")
 MACRO_CONFIG_INT(RiScoreboardAlwaysShowQuickActions, ri_scoreboard_always_show_quick_actions, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show quick actions in scoreboard always")
 MACRO_CONFIG_INT(RiScoreboardSortById, ri_scoreboard_sort_by_id, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sort scoreboard by id instead nickname")
+MACRO_CONFIG_INT(RiScoreboardRclientIndicatorSize, ri_scoreboard_rclient_indicator_size, 30, -50, 100, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Size of rclient indicator icons in scoreboard")
+MACRO_CONFIG_INT(RiScoreboardShowRclientIndicator, ri_scoreboard_show_rclient_indicator, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show rclient mark in scoreboard")
+
 
 //Lasers
 MACRO_CONFIG_INT(RiLaserGlowIntensity, ri_laser_ench, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "")
@@ -37,8 +40,8 @@ MACRO_CONFIG_INT(RiChangePlayerColorWhenXTargetEqualXPlayer, ri_change_player_co
 MACRO_CONFIG_INT(RiRClientSettingsTabs, ri_rclient_settings_tabs, 0, 0, 65536, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bit flags to disable settings tabs")
 
 //Voice
-MACRO_CONFIG_INT(RiVoiceEnable, ri_voice_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable external voice chat")
-MACRO_CONFIG_STR(RiVoiceServer, ri_voice_server, 128, "server.rushie-client.ru:50005", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice server address host:port")
+MACRO_CONFIG_INT(RiVoiceEnable, ri_voice_enable, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable external voice chat")
+MACRO_CONFIG_STR(RiVoiceServer, ri_voice_server, 128, "server.rushie-client.ru:9987", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice server address host:port")
 MACRO_CONFIG_STR(RiVoiceAudioBackend, ri_voice_audio_backend, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice audio backend (SDL audio driver name, empty = auto)")
 MACRO_CONFIG_STR(RiVoiceInputDevice, ri_voice_input_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice input device name (empty = default)")
 MACRO_CONFIG_STR(RiVoiceOutputDevice, ri_voice_output_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice output device name (empty = default)")
@@ -47,6 +50,8 @@ MACRO_CONFIG_INT(RiVoiceStereoWidth, ri_voice_stereo_width, 100, 0, 200, CFGFLAG
 MACRO_CONFIG_STR(RiVoiceToken, ri_voice_token, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice relay token (optional)")
 MACRO_CONFIG_INT(RiVoiceGroupMode, ri_voice_group_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice group mode (0=all/all, 1=group/group, 2=all->group, 3=group->all)")
 MACRO_CONFIG_INT(RiVoiceFilterEnable, ri_voice_filter_enable, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable voice HPF/compressor/limiter")
+MACRO_CONFIG_INT(RiVoiceNoiseSuppressEnable, ri_voice_noise_suppress_enable, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable RNNoise voice suppressor")
+MACRO_CONFIG_INT(RiVoiceNoiseSuppressStrength, ri_voice_noise_suppress_strength, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "RNNoise suppressor strength (percent)")
 MACRO_CONFIG_INT(RiVoiceCompThreshold, ri_voice_comp_threshold, 20, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice compressor threshold (percent)")
 MACRO_CONFIG_INT(RiVoiceCompRatio, ri_voice_comp_ratio, 25, 10, 80, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice compressor ratio (x10)")
 MACRO_CONFIG_INT(RiVoiceCompAttackMs, ri_voice_comp_attack_ms, 20, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice compressor attack (ms)")
@@ -54,8 +59,12 @@ MACRO_CONFIG_INT(RiVoiceCompReleaseMs, ri_voice_comp_release_ms, 200, 10, 500, C
 MACRO_CONFIG_INT(RiVoiceCompMakeup, ri_voice_comp_makeup, 160, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice compressor makeup gain (percent)")
 MACRO_CONFIG_INT(RiVoiceLimiter, ri_voice_limiter, 50, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice limiter level (percent)")
 MACRO_CONFIG_INT(RiVoiceRadius, ri_voice_radius, 50, 1, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice radius in tiles")
-MACRO_CONFIG_INT(RiVoiceVolume, ri_voice_volume, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice volume in percent")
+MACRO_CONFIG_INT(RiVoiceVolume, ri_voice_volume, 100, 0, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice volume in percent")
 MACRO_CONFIG_INT(RiVoiceMicVolume, ri_voice_mic_volume, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice microphone volume in percent")
+MACRO_CONFIG_INT(RiVoiceTestMode, ri_voice_test_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice test mode (0=off, 1=local, 2=server)")
+MACRO_CONFIG_INT(RiVoiceVadEnable, ri_voice_vad_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable voice activation (VAD)")
+MACRO_CONFIG_INT(RiVoiceVadThreshold, ri_voice_vad_threshold, 5, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice activation threshold (percent)")
+MACRO_CONFIG_INT(RiVoiceVadReleaseDelayMs, ri_voice_vad_release_delay_ms, 150, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Delay after voice activation ends (ms)")
 MACRO_CONFIG_INT(RiVoiceIgnoreDistance, ri_voice_ignore_distance, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ignore distance attenuation for voice chat")
 MACRO_CONFIG_INT(RiVoiceGroupGlobal, ri_voice_group_global, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hear group members everywhere (ignore distance for same group)")
 MACRO_CONFIG_INT(RiVoiceVisibilityMode, ri_voice_visibility_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice visibility mode (0=visible players, 1=team members)")
@@ -63,13 +72,19 @@ MACRO_CONFIG_INT(RiVoiceListMode, ri_voice_list_mode, 0, 0, 2, CFGFLAG_CLIENT | 
 MACRO_CONFIG_STR(RiVoiceWhitelist, ri_voice_whitelist, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice whitelist (comma-separated names)")
 MACRO_CONFIG_STR(RiVoiceBlacklist, ri_voice_blacklist, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice blacklist (comma-separated names)")
 MACRO_CONFIG_STR(RiVoiceMute, ri_voice_mute, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice mute list (comma-separated names, always muted)")
+MACRO_CONFIG_INT(RiVoiceHearVad, ri_voice_hear_vad, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hear players using voice activation")
+MACRO_CONFIG_STR(RiVoiceVadAllow, ri_voice_vad_allow, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice activation allow list (comma-separated names)")
 MACRO_CONFIG_STR(RiVoiceNameVolumes, ri_voice_name_volumes, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice per-name volume list (name=percent)")
 MACRO_CONFIG_INT(RiVoiceShowIndicator, ri_voice_show_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice activity icon in nameplates")
 MACRO_CONFIG_INT(RiVoiceIndicatorAboveSelf, ri_voice_indicator_above_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice activity icon above yourself")
+MACRO_CONFIG_INT(RiVoiceShowPing, ri_voice_show_ping, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice ping near HUD indicator")
 MACRO_CONFIG_INT(RiVoiceDebug, ri_voice_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Log voice chat debug info to console")
 MACRO_CONFIG_INT(RiVoiceShowWhenActive, ri_voice_show_when_active, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice chat indicator when active")
 MACRO_CONFIG_INT(RiVoiceOffNonActive, ri_voice_off_nonactive, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Off Voice when window not active (0-working always, 1-off nonactive")
 MACRO_CONFIG_INT(RiVoicePttReleaseDelayMs, ri_voice_ptt_release_delay_ms, 0, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Delay after releasing voice PTT (ms)")
+MACRO_CONFIG_INT(RiVoiceHearOnSpecPos, ri_voice_hear_on_spec_pos, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hear peoples in your spec pos")
+MACRO_CONFIG_INT(RiVoiceHearPeoplesInSpectate, ri_voice_hear_peoples_in_spectate, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hear observers (inactive players, not /spec)")
+MACRO_CONFIG_INT(RiVoiceShowOverlay, ri_voice_show_overlay, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice overlay")
 
 //Controls
 MACRO_CONFIG_INT(RiToggle45degrees, ri_toggle_45_degrees, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle 45 degrees bind or not")

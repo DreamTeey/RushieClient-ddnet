@@ -38,6 +38,7 @@ class CRClient : public CComponent
 	static void ConSpecUp(IConsole::IResult *pResult, void *pUserData);
 	static void ConSpecDown(IConsole::IResult *pResult, void *pUserData);
 	static void ConGotoTeleCursor(IConsole::IResult *pResult, void *pUserData);
+	static void ConGotoFinishCursor(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConFindSkin(IConsole::IResult *pResult, void *pUserData);
 	static void ConCopySkin(IConsole::IResult *pResult, void *pUserData);
@@ -60,6 +61,8 @@ class CRClient : public CComponent
 	static void ConVoiceListVolumes(IConsole::IResult *pResult, void *pUserData);
 	static void ConVoiceMuteAdd(IConsole::IResult *pResult, void *pUserData);
 	static void ConVoiceMuteRemove(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceVadAllowAdd(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceVadAllowRemove(IConsole::IResult *pResult, void *pUserData);
 	void AppendListItem(char *pList, int ListSize, const char *pItem);
 	CRClientVoice m_Voice;
 
@@ -196,6 +199,10 @@ public:
 
 	//Voice public
 	bool IsVoiceActive(int ClientId) const;
+	int VoicePingMs() const;
+	float VoiceMicLevel() const;
+	bool IsVoiceInputUnavailable() const;
+	bool IsVoiceOutputUnavailable() const;
 	static bool VoiceListHasName(const char *pList, const char *pName);
 	static bool VoiceListAddName(char *pList, int ListSize, const char *pName);
 	static bool VoiceListRemoveName(char *pList, int ListSize, const char *pName);

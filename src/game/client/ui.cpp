@@ -1392,7 +1392,7 @@ float CUi::DoScrollbarV(const void *pId, const CUIRect *pRect, float Current)
 	return ReturnValue;
 }
 
-float CUi::DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, const ColorRGBA *pColorInner)
+float CUi::DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, const ColorRGBA *pColorInner, bool AllowShiftSlow)
 {
 	Current = std::clamp(Current, 0.0f, 1.0f);
 
@@ -1426,7 +1426,7 @@ float CUi::DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, co
 		if(MouseButton(0))
 		{
 			Grabbed = true;
-			if(Input()->ShiftIsPressed())
+			if(AllowShiftSlow && Input()->ShiftIsPressed())
 				m_MouseSlow = true;
 		}
 		else
@@ -1501,6 +1501,7 @@ bool CUi::DoScrollbarOption(const void *pId, int *pOption, const CUIRect *pRect,
 	const bool NoClampValue = Flags & CUi::SCROLLBAR_OPTION_NOCLAMPVALUE;
 	const bool MultiLine = Flags & CUi::SCROLLBAR_OPTION_MULTILINE;
 	const bool DelayUpdate = Flags & CUi::SCROLLBAR_OPTION_DELAYUPDATE;
+	const bool NoSlowShift = Flags & CUi::SCROLLBAR_OPTION_NO_SLOWSHIFT;
 
 	int Value = (DelayUpdate && m_pLastActiveScrollbar == pId && CheckActiveItem(pId)) ? m_ScrollbarValue : *pOption;
 	if(Infinite)
@@ -1544,7 +1545,7 @@ bool CUi::DoScrollbarOption(const void *pId, int *pOption, const CUIRect *pRect,
 	const float FontSize = Label.h * CUi::ms_FontmodHeight * 0.8f;
 	DoLabel(&Label, aBuf, FontSize, TEXTALIGN_ML);
 
-	Value = pScale->ToAbsolute(DoScrollbarH(pId, &ScrollBar, pScale->ToRelative(Value, Min, Max)), Min, Max);
+	Value = pScale->ToAbsolute(DoScrollbarH(pId, &ScrollBar, pScale->ToRelative(Value, Min, Max), nullptr, !NoSlowShift), Min, Max);
 	if(NoClampValue && ((Value == Min && *pOption < Min) || (Value == Max && *pOption > Max)))
 	{
 		Value = *pOption; // use previous out of range value instead if the scrollbar is at the edge

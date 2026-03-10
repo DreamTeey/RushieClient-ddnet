@@ -35,6 +35,8 @@ void CRClient::OnShutdown()
 		g_Config.m_InpMousesens = m_45degreesDistanceOld == 0 ? m_45degreesDistanceOld : m_SmallsensOld;
 	if(m_45degreesEnabled)
 		g_Config.m_ClMouseMaxDistance = m_45degreesDistanceOld;
+
+	m_Voice.OnShutdown();
 }
 
 void CRClient::OnConsoleInit()
@@ -65,6 +67,7 @@ void CRClient::OnConsoleInit()
 	Console()->Register("+ri_spec_up", "", CFGFLAG_CLIENT, ConSpecUp, this, "move camera left in spec");
 	Console()->Register("+ri_spec_down", "", CFGFLAG_CLIENT, ConSpecDown, this, "move camera left in spec");
 	Console()->Register("ri_goto_tele_cursor", "", CFGFLAG_CLIENT, ConGotoTeleCursor, this, "View teleport destination/source near cursor");
+	Console()->Register("ri_goto_finish_cursor", "", CFGFLAG_CLIENT, ConGotoFinishCursor, this, "View finish near cursor (or start if already near finish)");
 	Console()->Register("+ri_voice_ptt", "", CFGFLAG_CLIENT, ConVoicePtt, this, "Push-to-talk for voice chat");
 	Console()->Register("ri_voice_allow", "s[name]", CFGFLAG_CLIENT, ConVoiceAllow, this, "Add player to voice whitelist");
 	Console()->Register("ri_voice_block", "s[name]", CFGFLAG_CLIENT, ConVoiceBlock, this, "Add player to voice blacklist");
@@ -76,6 +79,8 @@ void CRClient::OnConsoleInit()
 	Console()->Register("ri_voice_list_volumes", "", CFGFLAG_CLIENT, ConVoiceListVolumes, this, "List per-name voice volumes");
 	Console()->Register("ri_voice_mute_add", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteAdd, this, "Add player to voice mute list");
 	Console()->Register("ri_voice_mute_remove", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteRemove, this, "Remove player from voice mute list");
+	Console()->Register("ri_voice_vad_allow_add", "s[name]", CFGFLAG_CLIENT, ConVoiceVadAllowAdd, this, "Allow voice from voice-activated players");
+	Console()->Register("ri_voice_vad_allow_remove", "s[name]", CFGFLAG_CLIENT, ConVoiceVadAllowRemove, this, "Remove player from voice activation allow list");
 	Console()->Register("ri_get_checkpoint_id", "", CFGFLAG_CLIENT, ConGetCheckpointId, this, "Get id of checkpoint (write id or nickname player)");
 	Console()->Chain(
 		"ri_regex_player_whitelist", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
@@ -1928,6 +1933,54 @@ void CRClient::ConVoiceMuteRemove(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
+void CRClient::ConVoiceVadAllowAdd(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	const char *pName = pResult->GetString(0);
+
+	char aName[MAX_NAME_LENGTH];
+	if(!VoiceListTrimName(pName, aName, sizeof(aName)))
+	{
+		pSelf->GameClient()->Echo("Voice VAD allow add failed: empty name");
+		return;
+	}
+
+	if(VoiceListAddName(g_Config.m_RiVoiceVadAllow, sizeof(g_Config.m_RiVoiceVadAllow), aName))
+	{
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "Voice VAD allow added: %s", aName);
+		pSelf->GameClient()->Echo(aBuf);
+	}
+	else
+	{
+		pSelf->GameClient()->Echo("Voice VAD allow: already allowed");
+	}
+}
+
+void CRClient::ConVoiceVadAllowRemove(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	const char *pName = pResult->GetString(0);
+
+	char aName[MAX_NAME_LENGTH];
+	if(!VoiceListTrimName(pName, aName, sizeof(aName)))
+	{
+		pSelf->GameClient()->Echo("Voice VAD allow remove failed: empty name");
+		return;
+	}
+
+	if(VoiceListRemoveName(g_Config.m_RiVoiceVadAllow, sizeof(g_Config.m_RiVoiceVadAllow), aName))
+	{
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "Voice VAD allow removed: %s", aName);
+		pSelf->GameClient()->Echo(aBuf);
+	}
+	else
+	{
+		pSelf->GameClient()->Echo("Voice VAD allow: name not found");
+	}
+}
+
 void CRClient::ConVoiceListDevices(IConsole::IResult *pResult, void *pUserData)
 {
 	(void)pResult;
@@ -2081,6 +2134,85 @@ void CRClient::ConGotoTeleCursor(IConsole::IResult *pResult, void *pUserData)
 	pSelf->GameClient()->m_Controls.ClampMousePos();
 }
 
+void CRClient::ConGotoFinishCursor(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	if(pSelf->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW || !pSelf->GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		pSelf->GameClient()->Echo("You're not in freeview spectating");
+		return;
+	}
+
+	CCollision *pCollision = pSelf->GameClient()->Collision();
+	if(!pCollision)
+		return;
+
+	const int Width = pCollision->GetWidth();
+	const int Height = pCollision->GetHeight();
+	const vec2 Center = pSelf->GameClient()->m_Camera.m_Center;
+	const ivec2 CenterTile = ivec2(std::clamp(round_to_int(Center.x / 32.0f), 0, Width - 1), std::clamp(round_to_int(Center.y / 32.0f), 0, Height - 1));
+
+	auto HasTile = [&](int Index, int Tile) -> bool {
+		return pCollision->GetTileIndex(Index) == Tile || pCollision->GetFrontTileIndex(Index) == Tile;
+	};
+
+	bool NearFinish = false;
+	for(int y = CenterTile.y - 1; y <= CenterTile.y + 1 && !NearFinish; y++)
+	{
+		if(y < 0 || y >= Height)
+			continue;
+		for(int x = CenterTile.x - 1; x <= CenterTile.x + 1; x++)
+		{
+			if(x < 0 || x >= Width)
+				continue;
+			const int TileIndex = y * Width + x;
+			if(HasTile(TileIndex, TILE_FINISH))
+			{
+				NearFinish = true;
+				break;
+			}
+		}
+	}
+
+	const int TargetTile = NearFinish ? TILE_START : TILE_FINISH;
+	const char *pMissingMsg = NearFinish ? "No start found" : "No finish found";
+
+	std::vector<ivec2> Targets;
+	for(int y = 0; y < Height; y++)
+	{
+		for(int x = 0; x < Width; x++)
+		{
+			const int TileIndex = y * Width + x;
+			if(HasTile(TileIndex, TargetTile))
+				Targets.emplace_back(x, y);
+		}
+	}
+
+	if(Targets.empty())
+	{
+		pSelf->GameClient()->Echo(pMissingMsg);
+		return;
+	}
+
+	int BestIndex = 0;
+	float BestDist = -1.0f;
+	for(int i = 0; i < (int)Targets.size(); i++)
+	{
+		const vec2 Pos = vec2(Targets[i].x * 32.0f + 16.0f, Targets[i].y * 32.0f + 16.0f);
+		const float Dist = distance(Pos, Center);
+		if(BestDist < 0.0f || Dist < BestDist)
+		{
+			BestDist = Dist;
+			BestIndex = i;
+		}
+	}
+
+	const vec2 TargetPos = vec2(Targets[BestIndex].x * 32.0f + 16.0f, Targets[BestIndex].y * 32.0f + 16.0f);
+	pSelf->GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = TargetPos;
+	pSelf->GameClient()->m_Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::AUTOMATED;
+	pSelf->GameClient()->m_Controls.ClampMousePos();
+}
+
 void CRClient::RclientOnDummyChange(bool DummyConnected)
 {
 	if(g_Config.m_PlayerClanAutoChange)
@@ -2142,7 +2274,7 @@ float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int Cli
 		ExtraButtonRows++; // Lock
 
 	// Both popup entry points currently render the same stack of buttons.
-	const int ButtonRows = (IsDefaultRender ? 9 : 8) + ExtraButtonRows;
+	const int ButtonRows = (IsDefaultRender ? 10 : 9) + ExtraButtonRows;
 
 	float ScoreboardHeight = OuterPopupPadding + InnerMargin + LabelHeight;
 	if(IsBigger)
@@ -2160,6 +2292,26 @@ float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int Cli
 bool CRClient::IsVoiceActive(int ClientId) const
 {
 	return m_Voice.IsVoiceActive(ClientId);
+}
+
+int CRClient::VoicePingMs() const
+{
+	return m_Voice.PingMs();
+}
+
+float CRClient::VoiceMicLevel() const
+{
+	return m_Voice.MicLevel();
+}
+
+bool CRClient::IsVoiceInputUnavailable() const
+{
+	return m_Voice.IsCaptureUnavailable();
+}
+
+bool CRClient::IsVoiceOutputUnavailable() const
+{
+	return m_Voice.IsOutputUnavailable();
 }
 
 int CRClient::VoiceNameVolume(const char *pName, int DefaultPercent) const

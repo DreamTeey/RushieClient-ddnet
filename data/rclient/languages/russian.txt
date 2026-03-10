@@ -771,3 +771,94 @@ If change backend u need restart game
 
 PTT release delay (ms)
 == PTT задержка после отпускания (мс)
+
+[VoiceChat]
+Hear people that:
+== Слышать людей которые:
+
+[VoiceChat]
+You see
+== Ты видишь
+
+[VoiceChat]
+In team
+== В команде
+
+Hear from camera center while spectating
+== Слышать от центра камеры при наблюдении
+
+Hear observers (inactive players, not /spec)
+== Слышать наблюдателей (не играющих, не спек)
+
+Show overlay
+== Показывать оверлей
+
+VAD allow list
+== Разрешенные для VAD
+
+Hear players using voice activation
+== Слышать игроков использующие VAD
+
+Show voice ping
+== Показывать пинг войса
+
+Voice activation (VAD)
+== Активация голосом (VAD)
+
+Add in whitelist
+== Добавить в вайтлист
+
+Add in blacklist
+== Добавить в блеклист
+
+VAD allow add
+== Разрешить VAD
+
+VAD allow remove
+== Запретить VAD
+
+Show indicator in scoreboard
+== Показывать индикатор в табло
+
+Size of indicator in scoreboard
+== Размер индикатора в табло
+
+Find finish
+== Найти финиш
+
+Player menu
+== Найти меню
+
+Devices
+== Девайсы
+
+Listening & Groups
+== Прослушивание и группы
+
+Mix & Processing
+== Микс и обработка
+
+[VoiceChat]
+Test mode
+== Тест мод
+
+[VoiceChat]
+Off
+== Выключено
+
+[VoiceChat]
+Local
+== Локально
+
+[VoiceChat]
+Server
+== Сервер
+
+Overlay
+== Оверлей
+
+Noise suppressor (RNNoise)
+== Шумодав (RNNoise)
+
+Noise suppressor
+== Шумодав

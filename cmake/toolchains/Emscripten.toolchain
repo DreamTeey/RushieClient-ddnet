@@ -37,6 +37,8 @@ set(WASM_LINKER_FLAGS "${WASM_LINKER_FLAGS} -s EXPORTED_RUNTIME_METHODS=ccall")
 
 # Very important: use same stack size that other platforms have, as the default of 64 KiB that Emscripten uses is too small for our code and causes stack overflows.
 set(WASM_LINKER_FLAGS "${WASM_LINKER_FLAGS} -s STACK_SIZE=1MB")
+# wasm-ld requires INITIAL_MEMORY >= static data + stack; increase to avoid "initial memory too small" errors.
+set(WASM_LINKER_FLAGS "${WASM_LINKER_FLAGS} -s INITIAL_MEMORY=64MB")
 # Even if slower, memory growth has the advantage of using less resources, keep it on for now (instead of a static memory pool).
 set(WASM_LINKER_FLAGS "${WASM_LINKER_FLAGS} -s ALLOW_MEMORY_GROWTH=1")
 # Maximum of ~2 GiB with WASM32. Using more with WASM64 isn't well supported yet.

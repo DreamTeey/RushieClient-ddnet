@@ -114,5 +114,7 @@ static CBindChat::CBindRclient s_aDefaultBindChatRclientVoice[] = {
 	{"Add in blacklist", ".vcblacklist", "ri_voice_block"},
 	{"Mute", ".vcmute", "ri_voice_mute_add"},
 	{"Unmute", ".vcunmute", "ri_voice_mute_remove"},
+	{"VAD allow add", ".vcvadadd", "ri_voice_vad_allow_add"},
+	{"VAD allow remove", ".vcvadremove", "ri_voice_vad_allow_remove"},
 };
 #endif

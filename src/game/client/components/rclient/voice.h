@@ -21,10 +21,13 @@ class IConsole;
 class IEngineGraphics;
 struct OpusDecoder;
 struct OpusEncoder;
+struct DenoiseState;
 
 struct SRClientVoiceConfigSnapshot
 {
 	int m_RiVoiceFilterEnable = 0;
+	int m_RiVoiceNoiseSuppressEnable = 0;
+	int m_RiVoiceNoiseSuppressStrength = 0;
 	int m_RiVoiceCompThreshold = 0;
 	int m_RiVoiceCompRatio = 0;
 	int m_RiVoiceCompAttackMs = 0;
@@ -36,17 +39,25 @@ struct SRClientVoiceConfigSnapshot
 	int m_RiVoiceRadius = 0;
 	int m_RiVoiceVolume = 0;
 	int m_RiVoiceMicVolume = 0;
+	int m_RiVoiceTestMode = 0;
+	int m_RiVoiceVadEnable = 0;
+	int m_RiVoiceVadThreshold = 0;
+	int m_RiVoiceVadReleaseDelayMs = 0;
 	int m_RiVoiceIgnoreDistance = 0;
 	int m_RiVoiceGroupGlobal = 0;
 	int m_RiVoiceVisibilityMode = 0;
 	int m_RiVoiceListMode = 0;
 	int m_RiVoiceDebug = 0;
 	int m_RiVoiceGroupMode = 0;
+	int m_RiVoiceHearOnSpecPos = 0;
+	int m_RiVoiceHearPeoplesInSpectate = 0;
+	int m_RiVoiceHearVad = 0;
 	int m_ClShowOthers = 0;
 	uint32_t m_RiVoiceTokenHash = 0;
 	char m_aRiVoiceWhitelist[512] = {};
 	char m_aRiVoiceBlacklist[512] = {};
 	char m_aRiVoiceMute[512] = {};
+	char m_aRiVoiceVadAllow[512] = {};
 	char m_aRiVoiceNameVolumes[512] = {};
 };
 
@@ -120,9 +131,14 @@ class CRClientVoice
 	char m_aOutputDeviceName[128] = {0};
 	bool m_OutputStereo = true;
 	bool m_LogDeviceChange = false;
+	bool m_CaptureUnavailable = false;
+	bool m_OutputUnavailable = false;
 	float m_HpfPrevIn = 0.0f;
 	float m_HpfPrevOut = 0.0f;
 	float m_CompEnv = 0.0f;
+	float m_NsNoiseFloor = 0.0f;
+	float m_NsGain = 1.0f;
+	DenoiseState *m_pNoiseSuppress = nullptr;
 	std::atomic<int> m_OutputChannels = 0;
 	std::vector<int32_t> m_MixBuffer;
 
@@ -131,11 +147,18 @@ class CRClientVoice
 	int m_EncLossPerc = 0;
 	bool m_EncFec = false;
 	int64_t m_LastEncUpdate = 0;
+	std::atomic<int> m_PingMs = -1;
+	std::atomic<float> m_MicLevel = 0.0f;
+	int64_t m_LastPingSentTime = 0;
+	uint16_t m_LastPingSeq = 0;
 	std::array<SVoicePeer, MAX_CLIENTS> m_aPeers = {};
 	std::array<std::atomic<int64_t>, MAX_CLIENTS> m_aLastHeard = {};
 
 	std::atomic<bool> m_PttActive = false;
 	std::atomic<int64_t> m_PttReleaseDeadline = 0;
+	bool m_VadActive = false;
+	int64_t m_VadReleaseDeadline = 0;
+	bool m_TxWasActive = false;
 	uint16_t m_Sequence = 0;
 	std::atomic<uint32_t> m_ContextHash = 0;
 	int64_t m_LastKeepalive = 0;
@@ -154,10 +177,13 @@ class CRClientVoice
 	std::mutex m_SnapshotMutex;
 	int m_LocalClientIdSnap = -1;
 	bool m_OnlineSnap = false;
+	bool m_SpecActiveSnap = false;
+	vec2 m_SpecPosSnap = vec2(0.0f, 0.0f);
 	std::array<vec2, MAX_CLIENTS> m_aClientPosSnap = {};
 	std::array<std::array<char, MAX_NAME_LENGTH>, MAX_CLIENTS> m_aClientNameSnap = {};
 	std::array<uint8_t, MAX_CLIENTS> m_aClientOtherTeamSnap = {};
 	std::array<uint8_t, MAX_CLIENTS> m_aClientActiveSnap = {};
+	std::array<uint8_t, MAX_CLIENTS> m_aClientSpecSnap = {};
 
 	bool EnsureSocket();
 	bool EnsureAudio();
@@ -171,6 +197,7 @@ class CRClientVoice
 	void ProcessIncoming();
 	void DecodeJitter();
 	void UpdateEncoderParams();
+	void UpdateMicLevel(float Peak);
 	void PushPeerFrame(int PeerId, const int16_t *pPcm, int Samples, float LeftGain, float RightGain);
 	void MixAudio(int16_t *pOut, int Samples, int OutputChannels);
 	void ClearPeerFrames();
@@ -183,10 +210,15 @@ class CRClientVoice
 
 public:
 	void Init(CGameClient *pGameClient, IClient *pClient, IConsole *pConsole);
+	void OnShutdown();
 	void OnRender();
 	void SetPttActive(bool Active);
 	void ListDevices();
 	bool IsVoiceActive(int ClientId) const;
+	int PingMs() const { return m_PingMs.load(); }
+	float MicLevel() const { return m_MicLevel.load(); }
+	bool IsCaptureUnavailable() const { return m_CaptureUnavailable; }
+	bool IsOutputUnavailable() const { return m_OutputUnavailable; }
 };
 
 #endif // GAME_CLIENT_COMPONENTS_RCLIENT_VOICE_H

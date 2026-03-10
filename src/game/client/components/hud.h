@@ -117,6 +117,7 @@ class CHud : public CComponent
 	void RenderWarmupTimer();
 	void RenderLocalTime(float x);
 	void RenderVoiceIndicator();
+	void RenderVoiceSpeakerOverlay();
 
 	static constexpr float MOVEMENT_INFORMATION_LINE_HEIGHT = 8.0f;
 

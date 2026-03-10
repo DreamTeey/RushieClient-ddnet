@@ -664,9 +664,10 @@ public:
 		SCROLLBAR_OPTION_NOCLAMPVALUE = 1 << 1,
 		SCROLLBAR_OPTION_MULTILINE = 1 << 2,
 		SCROLLBAR_OPTION_DELAYUPDATE = 1 << 3,
+		SCROLLBAR_OPTION_NO_SLOWSHIFT = 1 << 4,
 	};
 	float DoScrollbarV(const void *pId, const CUIRect *pRect, float Current);
-	float DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, const ColorRGBA *pColorInner = nullptr);
+	float DoScrollbarH(const void *pId, const CUIRect *pRect, float Current, const ColorRGBA *pColorInner = nullptr, bool AllowShiftSlow = true);
 	bool DoScrollbarOption(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, const IScrollbarScale *pScale = &ms_LinearScrollbarScale, unsigned Flags = 0u, const char *pSuffix = "");
 
 	// progress bar
