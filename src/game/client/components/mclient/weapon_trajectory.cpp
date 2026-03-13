@@ -15,19 +15,22 @@
 
 vec4 CWeaponTrajectory::GetWeaponColor(int Weapon)
 {
+	// 从配置获取透明度 (10-100 转换为 0.1-1.0)
+	float Alpha = g_Config.m_McWeaponTrajectoryAlpha / 100.0f;
+
 	switch(Weapon)
 	{
-	case WEAPON_GUN: return vec4(1.0f, 1.0f, 0.0f, 0.6f);        // 黄色
-	case WEAPON_SHOTGUN: return vec4(1.0f, 0.6f, 0.0f, 0.6f);   // 橙色
-	case WEAPON_GRENADE: return vec4(1.0f, 0.2f, 0.2f, 0.6f);   // 红色
-	case WEAPON_LASER: return vec4(0.2f, 1.0f, 0.2f, 0.6f);     // 绿色
-	default: return vec4(1.0f, 1.0f, 1.0f, 0.6f);                // 白色
+	case WEAPON_GUN: return vec4(1.0f, 1.0f, 0.0f, Alpha);        // 黄色
+	case WEAPON_SHOTGUN: return vec4(1.0f, 0.6f, 0.0f, Alpha);   // 橙色
+	case WEAPON_GRENADE: return vec4(1.0f, 0.2f, 0.2f, Alpha);   // 红色
+	case WEAPON_LASER: return vec4(0.2f, 1.0f, 0.2f, Alpha);     // 绿色
+	default: return vec4(1.0f, 1.0f, 1.0f, Alpha);                // 白色
 	}
 }
 
 void CWeaponTrajectory::OnRender()
 {
-	if(!Config()->m_McWeaponTrajectoryEnable)
+	if(!g_Config.m_McWeaponTrajectoryEnable)
 		return;
 
 	if(!GameClient()->m_Snap.m_pLocalInfo)
@@ -45,6 +48,27 @@ void CWeaponTrajectory::OnRender()
 
 	if(CurWeapon == WEAPON_HAMMER || CurWeapon == WEAPON_NINJA)
 		return;
+
+	// 检查当前武器的独立开关
+	switch(CurWeapon)
+	{
+	case WEAPON_GUN:
+		if(!g_Config.m_McWeaponTrajectoryGun)
+			return;
+		break;
+	case WEAPON_SHOTGUN:
+		if(!g_Config.m_McWeaponTrajectoryShotgun)
+			return;
+		break;
+	case WEAPON_GRENADE:
+		if(!g_Config.m_McWeaponTrajectoryGrenade)
+			return;
+		break;
+	case WEAPON_LASER:
+		if(!g_Config.m_McWeaponTrajectoryLaser)
+			return;
+		break;
+	}
 
 	const CTuningParams *pTuning = GameClient()->GetTuning(0);
 

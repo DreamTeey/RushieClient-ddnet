@@ -364,6 +364,28 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
                 });
             }
         }
+
+        // 武器轨迹可视化
+        DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWeaponTrajectoryEnable, MCLocalize("武器轨迹可视化"), &g_Config.m_McWeaponTrajectoryEnable, pCol, LineSize);
+        pCol->HSplitTop(MarginSmall, nullptr, pCol);
+        if(g_Config.m_McWeaponTrajectoryEnable)
+        {
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWeaponTrajectoryGun, MCLocalize("枪"), &g_Config.m_McWeaponTrajectoryGun, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWeaponTrajectoryShotgun, MCLocalize("霰弹枪"), &g_Config.m_McWeaponTrajectoryShotgun, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWeaponTrajectoryGrenade, MCLocalize("手雷"), &g_Config.m_McWeaponTrajectoryGrenade, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McWeaponTrajectoryLaser, MCLocalize("激光"), &g_Config.m_McWeaponTrajectoryLaser, pRect, LineSize);
+            });
+            DoSubOption(pCol, [&](CUIRect* pRect) {
+                Ui()->DoScrollbarOption(&g_Config.m_McWeaponTrajectoryAlpha, &g_Config.m_McWeaponTrajectoryAlpha, pRect, MCLocalize("透明度"), 10, 100);
+            });
+        }
     });
 
     // ================== 滚动条计算 ==================

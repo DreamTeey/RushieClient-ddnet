@@ -75,3 +75,12 @@ MACRO_CONFIG_STR(McFriendAutoGreetText, mc_friend_auto_greet_text, 128, "Hi {nam
 
 // 武器弹道可视化相关配置
 MACRO_CONFIG_INT(McWeaponTrajectoryEnable, mc_weapon_trajectory_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable weapon trajectory visualization")
+
+// 每个武器的独立开关
+MACRO_CONFIG_INT(McWeaponTrajectoryGun, mc_weapon_trajectory_gun, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show gun trajectory")
+MACRO_CONFIG_INT(McWeaponTrajectoryShotgun, mc_weapon_trajectory_shotgun, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show shotgun trajectory")
+MACRO_CONFIG_INT(McWeaponTrajectoryGrenade, mc_weapon_trajectory_grenade, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show grenade trajectory")
+MACRO_CONFIG_INT(McWeaponTrajectoryLaser, mc_weapon_trajectory_laser, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show laser trajectory")
+
+// 武器轨迹透明度
+MACRO_CONFIG_INT(McWeaponTrajectoryAlpha, mc_weapon_trajectory_alpha, 60, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Weapon trajectory transparency (10-100)")

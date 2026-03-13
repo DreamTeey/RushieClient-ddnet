@@ -6,6 +6,9 @@
 #include <engine/shared/config.h>
 #include <base/vmath.h>
 
+// 配置变量全局对象
+extern CConfig g_Config;
+
 #include <vector>
 
 // 武器弹道可视化组件
