@@ -543,21 +543,21 @@ void CMClient::RepeatLastMessage()
 	// 检查是否有记录的消息
 	if(!m_HasLastMessage || m_aLastMessage[0] == '\0')
 	{
-		dbg_msg("mclient", "No last message to repeat");
+		// dbg_msg("mclient", "No last message to repeat");
 		return;
 	}
 
 	// 检查是否连接到服务器
 	if(Client()->State() != IClient::STATE_ONLINE)
 	{
-		dbg_msg("mclient", "Not connected to server");
+		// dbg_msg("mclient", "Not connected to server");
 		return;
 	}
 
 	// 发送消息
 	GameClient()->m_Chat.SendChat(0, m_aLastMessage);
 
-	dbg_msg("mclient", "Repeated message: %s", m_aLastMessage);
+	// dbg_msg("mclient", "Repeated message: %s", m_aLastMessage);
 }
 
 void CMClient::ConRepeatLastMessageCallback(IConsole::IResult *pResult, void *pUserData)
@@ -576,14 +576,14 @@ void CMClient::ProcessAutoPlusOne(const char *pMessage, int ClientId)
 	float TimeDiff = Client()->LocalTime() - m_LastPlusOneTime;
 	if(TimeDiff < g_Config.m_McAutoPlusOneCooldown)
 	{
-		dbg_msg("mclient", "Auto plus one cooldown: %.2f seconds remaining", g_Config.m_McAutoPlusOneCooldown - TimeDiff);
+		// dbg_msg("mclient", "Auto plus one cooldown: %.2f seconds remaining", g_Config.m_McAutoPlusOneCooldown - TimeDiff);
 		return;
 	}
 
 	// 检查是否已经复读过这条消息
 	if(str_comp(pMessage, m_aLastRepeatedMessage) == 0)
 	{
-		dbg_msg("mclient", "Already repeated this message: %s", pMessage);
+		// dbg_msg("mclient", "Already repeated this message: %s", pMessage);
 		return;
 	}
 
@@ -593,7 +593,7 @@ void CMClient::ProcessAutoPlusOne(const char *pMessage, int ClientId)
 		// 保存当前消息作为上一条消息
 		str_copy(m_aPreviousMessage, pMessage, sizeof(m_aPreviousMessage));
 		m_HasPreviousMessage = true;
-		dbg_msg("mclient", "Saved previous message: %s", m_aPreviousMessage);
+		// dbg_msg("mclient", "Saved previous message: %s", m_aPreviousMessage);
 		return;
 	}
 
@@ -610,14 +610,14 @@ void CMClient::ProcessAutoPlusOne(const char *pMessage, int ClientId)
 			str_copy(m_aLastRepeatedMessage, pMessage, sizeof(m_aLastRepeatedMessage));
 			m_LastPlusOneTime = Client()->LocalTime();
 
-			dbg_msg("mclient", "Auto plus one: %s", pMessage);
+			// dbg_msg("mclient", "Auto plus one: %s", pMessage);
 		}
 	}
 	else
 	{
 		// 更新上一条消息
 		str_copy(m_aPreviousMessage, pMessage, sizeof(m_aPreviousMessage));
-		dbg_msg("mclient", "Updated previous message: %s", m_aPreviousMessage);
+		// dbg_msg("mclient", "Updated previous message: %s", m_aPreviousMessage);
 	}
 }
 
