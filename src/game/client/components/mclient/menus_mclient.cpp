@@ -284,6 +284,9 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
                 Ui()->DoScrollbarOption(&g_Config.m_McAutoPlusOneCooldown, &g_Config.m_McAutoPlusOneCooldown, pRect, MCLocalize("冷却时间(秒)"), 1, 10);
             });
         }
+
+        // 被锤击时随机表情
+        DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McRandomEmoteOnHammer, MCLocalize("被锤击时随机表情"), &g_Config.m_McRandomEmoteOnHammer, pCol, LineSize);
     });
 
     // ================== 右侧渲染 ==================

@@ -22,6 +22,15 @@ CMClient::CMClient()
 	m_FeetHue = 0.0f;
 	mem_zero(m_aFriendStates, sizeof(m_aFriendStates));
 
+	// 初始化被锤击时随机表情相关变量
+	for(int i = 0; i < NUM_DUMMIES; i++)
+	{
+		for(int j = 0; j < MAX_CLIENTS; j++)
+		{
+			m_aaLastRandomEmoteAttackTick[i][j] = 0;
+		}
+	}
+
 	// 初始化武器历史
 	m_aLastWeapon[0] = 1; // 默认锤子
 	m_aLastWeapon[1] = 2; // 默认枪
@@ -131,6 +140,12 @@ void CMClient::OnRender()
 	if(g_Config.m_McRainbowTee)
 	{
 		UpdateRainbow();
+	}
+
+	// 检查被锤击时随机表情
+	if(g_Config.m_McRandomEmoteOnHammer)
+	{
+		CheckRandomEmoteOnHammer();
 	}
 
 	// 检查好友上线提醒
@@ -399,6 +414,84 @@ bool CMClient::CheckBeingHammered(const vec2& LocalPos, int LocalId, int& Attack
 	}
 
 	return false;
+}
+
+void CMClient::CheckRandomEmoteOnHammer()
+{
+	if(!g_Config.m_McRandomEmoteOnHammer)
+		return;
+
+	// 遍历所有本地角色（主体和分身）
+	for(int DummyIndex = 0; DummyIndex < NUM_DUMMIES; DummyIndex++)
+	{
+		int LocalId = GameClient()->m_aLocalIds[DummyIndex];
+		if(LocalId < 0 || LocalId >= MAX_CLIENTS)
+			continue;
+
+		// 获取本地角色位置
+		CCharacter *pLocalChar = GameClient()->m_PredictedWorld.GetCharacterById(LocalId);
+		if(!pLocalChar)
+			continue;
+
+		const vec2 LocalPos = pLocalChar->GetPos();
+
+		// 检查是否有玩家正在用锤子攻击本地角色
+		int AttackerId = -1;
+		if(CheckBeingHammered(LocalPos, LocalId, AttackerId))
+		{
+			// 获取攻击者的角色对象
+			CCharacter *pAttacker = GameClient()->m_PredictedWorld.GetCharacterById(AttackerId);
+			if(!pAttacker)
+				continue;
+
+			// 获取攻击者的攻击帧数
+			const int AttackTick = pAttacker->GetAttackTick();
+			if(AttackTick <= 0)
+				continue;
+
+			// 检查这个攻击是否已经处理过
+			if(AttackTick == m_aaLastRandomEmoteAttackTick[DummyIndex][AttackerId])
+				continue;
+
+			// 记录这个攻击帧数
+			m_aaLastRandomEmoteAttackTick[DummyIndex][AttackerId] = AttackTick;
+
+			// 根据当前操控的角色发送表情
+			SendRandomEmote(DummyIndex);
+		}
+	}
+}
+
+void CMClient::SendRandomEmote(int DummyIndex)
+{
+	// 随机选择一个表情（0-5）
+	int Emote = rand() % 6;
+
+	// 根据DummyIndex确定发送给哪个连接
+	// DummyIndex = 0 表示主体，DummyIndex = 1 表示分身
+	bool IsDummy = (DummyIndex == 1);
+
+	// 构造表情消息
+	CNetMsg_Cl_Emoticon Msg;
+	Msg.m_Emoticon = Emote;
+
+	// 发送给对应的连接
+	if(IsDummy)
+	{
+		// 发送给分身连接
+		CMsgPacker MsgDummy(NETMSGTYPE_CL_EMOTICON, false);
+		MsgDummy.AddInt(Emote);
+		Client()->SendMsg(true, &MsgDummy, MSGFLAG_VITAL);
+	}
+	else
+	{
+		// 发送给主体连接
+		CMsgPacker MsgMain(NETMSGTYPE_CL_EMOTICON, false);
+		MsgMain.AddInt(Emote);
+		Client()->SendMsg(false, &MsgMain, MSGFLAG_VITAL);
+	}
+
+	dbg_msg("mclient", "SendRandomEmote: 发送随机表情 Emote=%d, DummyIndex=%d, IsDummy=%d", Emote, DummyIndex, IsDummy);
 }
 
 bool CMClient::CheckDistanceClone(const vec2& LocalPos, int& TargetId)

@@ -40,6 +40,9 @@ MACRO_CONFIG_INT(McCloneOnHook, mc_clone_on_hook, 0, 0, 1, CFGFLAG_CLIENT | CFGF
 MACRO_CONFIG_INT(McCloneOnHammer, mc_clone_on_hammer, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Clone on hammer")
 MACRO_CONFIG_INT(McCloneOnDistance, mc_clone_on_distance, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Clone on distance")
 
+// 被锤击时随机表情相关配置：控制被锤击时自动发送随机表情的功能
+MACRO_CONFIG_INT(McRandomEmoteOnHammer, mc_random_emote_on_hammer, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Random emote when hammered")
+
 // 彩虹Tee相关配置：控制Tee身体和脚部的彩虹渐变效果及速度
 MACRO_CONFIG_INT(McRainbowTee, mc_rainbow_tee, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rainbow tee")
 MACRO_CONFIG_INT(McRainbowTeeBody, mc_rainbow_tee_body, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rainbow tee body")

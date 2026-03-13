@@ -5,6 +5,8 @@
 #include <engine/console.h>
 #include <engine/friends.h>
 #include <engine/serverbrowser.h>
+#include <engine/client/enums.h>
+#include <engine/shared/protocol.h>
 
 class CMClient : public CComponent
 {
@@ -100,6 +102,10 @@ private:
 	// 反向锤击检测：检测是否有其他玩家正在用锤子攻击本地角色
 	bool CheckBeingHammered(const vec2& LocalPos, int LocalId, int& AttackerId);
 
+	// 被锤击时随机表情功能
+	void CheckRandomEmoteOnHammer();
+	void SendRandomEmote(int DummyIndex);
+
 	// 好友功能辅助方法
 	void ScanServersForFriends();
 	void HandleFriendClient(const CServerInfo *pServerInfo, const CServerInfo::CClient *pClient);
@@ -148,6 +154,9 @@ private:
 	char m_aLastRepeatedMessage[512]; // 记录最后一条复读的消息
 	bool m_HasPreviousMessage; // 是否有上一条消息
 	float m_LastPlusOneTime; // 最后一次加一的时间
+
+	// 被锤击时随机表情相关
+	int m_aaLastRandomEmoteAttackTick[NUM_DUMMIES][MAX_CLIENTS]; // 记录每个角色对每个攻击者的最后攻击帧数
 
 	// 钩子角度辅助相关
 	bool m_HookAngleHelperEnabled; // 是否启用钩子角度辅助
