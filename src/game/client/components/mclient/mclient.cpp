@@ -4,6 +4,7 @@
 #include <engine/input.h>
 #include <engine/shared/config.h>
 #include <game/client/gameclient.h>
+#include <game/client/prediction/entities/character.h>
 #include <game/gamecore.h>
 
 // 定义静态成员变量
@@ -287,21 +288,41 @@ void CMClient::CheckCloneSkin()
 		m_LastClonedClientId = TargetId;
 	}
 }
-
+//感谢Q1meng客户端的计算方式
 bool CMClient::CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId)
 {
 	const CNetObj_PlayerInput *pInput = &GameClient()->m_aClients[LocalId].m_Predicted.m_Input;
 	if(!pInput || pInput->m_WantedWeapon != WEAPON_HAMMER || !(pInput->m_Fire & 1))
 		return false;
 
-	const vec2 Dir = normalize(vec2(pInput->m_TargetX, pInput->m_TargetY));
-	const vec2 ProjStartPos = LocalPos + Dir * HAMMER_RADIUS * 0.75f;
+	// 获取本地角色
+	CCharacter *pLocalChar = GameClient()->m_PredictedWorld.GetCharacterById(LocalId);
+	if(!pLocalChar)
+		return false;
 
-	float MinDistance = 9999.0f;
+	// 检查锤子是否被禁用
+	if(pLocalChar->HammerHitDisabled())
+		return false;
+
+	// 计算锤击方向和起始位置
+	const vec2 Dir = normalize(vec2(pInput->m_TargetX, pInput->m_TargetY));
+	const float Radius = HAMMER_RADIUS; // 28.0f
+	const vec2 ProjStartPos = LocalPos + Dir * Radius * 0.75f;
+
+	// 最大有效攻击距离 = 攻击者的一半半径 + 目标的碰撞半径
+	const float MaxDist = Radius * 0.5f + Radius; // 目标的碰撞半径也是28.0f
+
+	// 查找最近的玩家，使用平方距离比较
+	float MinDistanceSq = MaxDist * MaxDist;
+	TargetId = -1;
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(i == LocalId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			continue;
+
+		// 检查是否能与目标发生碰撞
+		if(!pLocalChar->CanCollide(i))
 			continue;
 
 		const vec2 OtherPos = vec2(
@@ -309,16 +330,75 @@ bool CMClient::CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId
 			GameClient()->m_Snap.m_aCharacters[i].m_Cur.m_Y
 		);
 
-		const float Distance = distance(ProjStartPos, OtherPos);
-		if(Distance < MinDistance && Distance < HAMMER_RADIUS * 0.5f)
+		// 使用平方距离比较，避免开方运算
+		const float DistanceSq = length_squared(OtherPos - ProjStartPos);
+		if(DistanceSq <= MinDistanceSq)
 		{
-			MinDistance = Distance;
+			MinDistanceSq = DistanceSq;
 			TargetId = i;
 		}
 	}
 
+	if(TargetId != -1)
+	{
+		dbg_msg("mclient", "CheckHammerClone: 找到目标 TargetId=%d, Distance=%.2f", TargetId, sqrt(MinDistanceSq));
+	}
+
 	// return TargetId != -1 && TargetId != m_LastClonedClientId;
 	return TargetId != -1;
+}
+
+bool CMClient::CheckBeingHammered(const vec2& LocalPos, int LocalId, int& AttackerId)
+{
+	// 获取本地角色
+	CCharacter *pLocalChar = GameClient()->m_PredictedWorld.GetCharacterById(LocalId);
+	if(!pLocalChar)
+		return false;
+
+	// 遍历所有玩家，检查是否有玩家正在用锤子攻击本地角色
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		// 跳过自己和未激活的玩家
+		if(i == LocalId || !GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			continue;
+
+		// 获取攻击者角色
+		CCharacter *pAttacker = GameClient()->m_PredictedWorld.GetCharacterById(i);
+		if(!pAttacker)
+			continue;
+
+		// 检查攻击者是否在使用锤子并按下攻击键
+		const CNetObj_PlayerInput *pInput = &GameClient()->m_aClients[i].m_Predicted.m_Input;
+		if(!pInput || pInput->m_WantedWeapon != WEAPON_HAMMER || !(pInput->m_Fire & 1))
+			continue;
+
+		// 检查攻击者的锤子是否被禁用
+		if(pAttacker->HammerHitDisabled())
+			continue;
+
+		// 检查攻击者是否能与本地角色发生碰撞
+		if(!pAttacker->CanCollide(LocalId))
+			continue;
+
+		// 计算攻击者的锤击方向和起始位置
+		const vec2 Dir = normalize(vec2(pInput->m_TargetX, pInput->m_TargetY));
+		const float Radius = HAMMER_RADIUS; // 28.0f
+		const vec2 ProjStartPos = pAttacker->GetPos() + Dir * Radius * 0.75f;
+
+		// 最大有效攻击距离 = 攻击者的一半半径 + 目标的碰撞半径
+		const float MaxDist = Radius * 0.5f + Radius;
+
+		// 使用平方距离比较，避免开方运算
+		const float DistanceSq = length_squared(LocalPos - ProjStartPos);
+		if(DistanceSq <= MaxDist * MaxDist)
+		{
+			AttackerId = i;
+			dbg_msg("mclient", "CheckBeingHammered: 检测到被锤击！攻击者=%d, 距离=%.2f", AttackerId, sqrt(DistanceSq));
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool CMClient::CheckDistanceClone(const vec2& LocalPos, int& TargetId)

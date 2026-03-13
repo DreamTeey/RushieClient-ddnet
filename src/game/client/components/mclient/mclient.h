@@ -96,6 +96,9 @@ private:
 	void SendSkinUpdate(bool IsDummy);
 	bool CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId);
 	bool CheckDistanceClone(const vec2& LocalPos, int& TargetId);
+	
+	// 反向锤击检测：检测是否有其他玩家正在用锤子攻击本地角色
+	bool CheckBeingHammered(const vec2& LocalPos, int LocalId, int& AttackerId);
 
 	// 好友功能辅助方法
 	void ScanServersForFriends();
