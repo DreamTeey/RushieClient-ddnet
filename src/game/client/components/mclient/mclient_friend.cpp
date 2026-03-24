@@ -17,6 +17,10 @@ void CMClient::CheckFriendNotification()
 	if(!g_Config.m_McFriendNotify)
 		return;
 
+	IServerBrowser *pServerBrowser = GameClient()->ServerBrowser();
+	if(!pServerBrowser)
+		return;
+
 	float CurrentTime = Client()->LocalTime();
 
 	// 1. 定时触发刷新
@@ -24,19 +28,27 @@ void CMClient::CheckFriendNotification()
 	{
 		if(CurrentTime - m_LastFriendRefreshTime >= g_Config.m_McFriendNotifyRefreshInterval)
 		{
-			GameClient()->ServerBrowser()->Refresh(IServerBrowser::TYPE_INTERNET);
+			pServerBrowser->Refresh(IServerBrowser::TYPE_INTERNET);
 			m_LastFriendRefreshTime = CurrentTime;
 		}
 	}
 
-	// 2. 标记阶段：先假设所有记录的好友都已离线
+	// 2. 关键检查：如果服务器列表正在刷新中，跳过本次状态检查
+	//    避免在数据未完全加载时误判好友下线
+	if(pServerBrowser->IsRefreshing() || pServerBrowser->IsGettingServerlist())
+	{
+		// dbg_msg("mclient-friend", "Skipping friend state check - server list is refreshing");
+		return;
+	}
+
+	// 3. 标记阶段：先假设所有记录的好友都已离线
 	for(int i = 0; i < m_NumFriendStates; i++)
 		m_aFriendStates[i].m_IsStillOnline = false;
 
-	// 3. 扫描阶段：遍历所有服务器查找好友
+	// 4. 扫描阶段：遍历所有服务器查找好友
 	ScanServersForFriends();
 
-	// 4. 清理与下线提醒阶段
+	// 5. 清理与下线提醒阶段
 	ProcessOfflineFriends();
 }
 
@@ -141,14 +153,8 @@ void CMClient::OnFriendJoin(const CServerInfo *pServerInfo, const CServerInfo::C
 	str_format(aBuf, sizeof(aBuf), "[%s] 已上线", pFriendName);
 	GameClient()->m_Chat.Echo(aBuf);
 
-	// 如果启用了自动打招呼功能，且好友在当前服务器
-	if(g_Config.m_McFriendAutoGreet)
-	{
-		if(IsFriendInCurrentServer(pServerInfo))
-		{
-			SendGreetingMessage(pFriendName);
-		}
-	}
+	// 注意：好友进入地图打招呼逻辑已移到 CheckFriendJoinMap() 中
+	// 此处仅保留上线通知
 }
 
 bool CMClient::IsFriendInCurrentServer(const CServerInfo *pFriendServerInfo) const

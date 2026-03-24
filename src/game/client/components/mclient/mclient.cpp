@@ -55,6 +55,9 @@ CMClient::CMClient()
 	m_LastHookedByClientId = -1;
 	m_LastHookedByTime = 0;
 	mem_zero(m_aLastHookedByName, sizeof(m_aLastHookedByName));
+
+	// 初始化好友进入地图打招呼功能
+	mem_zero(m_aPrevPlayerActive, sizeof(m_aPrevPlayerActive));
 }
 
 void CMClient::OnInit()
@@ -154,6 +157,12 @@ void CMClient::OnRender()
 		CheckFriendNotification();
 	}
 
+	// 检查好友进入当前地图（与服务器列表扫描独立）
+	if(g_Config.m_McFriendAutoGreet)
+	{
+		CheckFriendJoinMap();
+	}
+
 	// 钩子角度辅助功能
 	if(g_Config.m_McHookAngleHelper)
 	{
@@ -185,6 +194,48 @@ void CMClient::OnRender()
 	{
 		UpdateLastHookedBy();
 	}
+}
+
+void CMClient::CheckFriendJoinMap()
+{
+	// 检测游戏内玩家加入事件，与服务器列表扫描独立
+	// 当好友加入当前地图时触发打招呼
+
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+
+	// 获取当前玩家列表
+	bool aCurrentPlayerActive[MAX_CLIENTS];
+	mem_zero(aCurrentPlayerActive, sizeof(aCurrentPlayerActive));
+
+	// 标记当前帧的活跃玩家
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		const CNetObj_PlayerInfo *pInfo = GameClient()->m_Snap.m_apPlayerInfos[i];
+		if(pInfo && pInfo->m_Team != TEAM_SPECTATORS)
+		{
+			aCurrentPlayerActive[i] = true;
+
+			// 检测新加入的玩家（之前不活跃，现在活跃）
+			if(!m_aPrevPlayerActive[i])
+			{
+				// 获取玩家名称和战队
+				const char *pName = GameClient()->m_aClients[i].m_aName;
+				const char *pClan = GameClient()->m_aClients[i].m_aClan;
+
+				// 检查是否是好友
+				if(GameClient()->Friends()->IsFriend(pName, pClan, true))
+				{
+					// 触发好友进入地图打招呼
+					SendGreetingMessage(pName);
+					// dbg_msg("mclient-friend", "Friend '%s' joined the map", pName);
+				}
+			}
+		}
+	}
+
+	// 更新上一帧玩家状态
+	mem_copy(m_aPrevPlayerActive, aCurrentPlayerActive, sizeof(m_aPrevPlayerActive));
 }
 
 bool CMClient::CanCloneSkin() const
@@ -356,7 +407,7 @@ bool CMClient::CheckHammerClone(const vec2& LocalPos, int LocalId, int& TargetId
 
 	if(TargetId != -1)
 	{
-		dbg_msg("mclient", "CheckHammerClone: 找到目标 TargetId=%d, Distance=%.2f", TargetId, sqrt(MinDistanceSq));
+		// dbg_msg("mclient", "CheckHammerClone: 找到目标 TargetId=%d, Distance=%.2f", TargetId, sqrt(MinDistanceSq));
 	}
 
 	// return TargetId != -1 && TargetId != m_LastClonedClientId;
@@ -408,7 +459,7 @@ bool CMClient::CheckBeingHammered(const vec2& LocalPos, int LocalId, int& Attack
 		if(DistanceSq <= MaxDist * MaxDist)
 		{
 			AttackerId = i;
-			dbg_msg("mclient", "CheckBeingHammered: 检测到被锤击！攻击者=%d, 距离=%.2f", AttackerId, sqrt(DistanceSq));
+			// dbg_msg("mclient", "CheckBeingHammered: 检测到被锤击！攻击者=%d, 距离=%.2f", AttackerId, sqrt(DistanceSq));
 			return true;
 		}
 	}
@@ -491,7 +542,7 @@ void CMClient::SendRandomEmote(int DummyIndex)
 		Client()->SendMsg(false, &MsgMain, MSGFLAG_VITAL);
 	}
 
-	dbg_msg("mclient", "SendRandomEmote: 发送随机表情 Emote=%d, DummyIndex=%d, IsDummy=%d", Emote, DummyIndex, IsDummy);
+	// dbg_msg("mclient", "SendRandomEmote: 发送随机表情 Emote=%d, DummyIndex=%d, IsDummy=%d", Emote, DummyIndex, IsDummy);
 }
 
 bool CMClient::CheckDistanceClone(const vec2& LocalPos, int& TargetId)
@@ -955,7 +1006,7 @@ void CMClient::ConToggleHookAngleHelperCallback(IConsole::IResult *pResult, void
 	CMClient *pThis = static_cast<CMClient *>(pUserData);
 	pThis->m_HookAngleHelperEnabled = !pThis->m_HookAngleHelperEnabled;
 	g_Config.m_McHookAngleHelper = pThis->m_HookAngleHelperEnabled;
-	dbg_msg("mclient", "Hook angle helper %s", pThis->m_HookAngleHelperEnabled ? "enabled" : "disabled");
+	// dbg_msg("mclient", "Hook angle helper %s", pThis->m_HookAngleHelperEnabled ? "enabled" : "disabled");
 }
 
 void CMClient::ConHookAngleApplyCallback(IConsole::IResult *pResult, void *pUserData)
@@ -970,7 +1021,7 @@ void CMClient::ConHookAngleResetCallback(IConsole::IResult *pResult, void *pUser
 	pThis->m_HasBestAngle = false;
 	pThis->m_BestHookAngle = 0.0f;
 	pThis->m_vAngleResults.clear();
-	dbg_msg("mclient", "Hook angle helper reset");
+	// dbg_msg("mclient", "Hook angle helper reset");
 }
 
 
@@ -1284,7 +1335,7 @@ void CMClient::ApplyBestAngle()
 {
 	if(!m_HasBestAngle)
 	{
-		dbg_msg("mclient", "Cannot apply angle: No best angle found");
+		// dbg_msg("mclient", "Cannot apply angle: No best angle found");
 		return;
 	}
 	
@@ -1299,7 +1350,7 @@ void CMClient::ApplyBestAngle()
 	// 应用到输入
 	GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = MousePos;
 	
-	dbg_msg("mclient", "Applied angle %.2f deg", Angle * 180.0f / pi);
+	// dbg_msg("mclient", "Applied angle %.2f deg", Angle * 180.0f / pi);
 }
 
 void CMClient::UpdateLastHookedBy()

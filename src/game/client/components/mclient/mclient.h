@@ -141,6 +141,10 @@ private:
 	static SFriendState m_aFriendStates[IFriends::MAX_FRIENDS];
 	int m_NumFriendStates;
 
+	// 好友进入地图打招呼相关
+	bool m_aPrevPlayerActive[MAX_CLIENTS];  // 上一帧玩家是否在当前地图
+	void CheckFriendJoinMap();  // 检测好友进入地图
+
 	// 武器切换相关
 	int m_aLastWeapon[2]; // 记录最近使用的两个武器
 	int m_LastWeaponIndex;
