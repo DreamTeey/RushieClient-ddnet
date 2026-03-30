@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_RCLIENT_VOICE_H
 #define GAME_CLIENT_COMPONENTS_RCLIENT_VOICE_H
 
+#include <base/net.h>
 #include <base/system.h>
 #include <base/vmath.h>
 
@@ -26,6 +27,7 @@ struct DenoiseState;
 struct SRClientVoiceConfigSnapshot
 {
 	int m_RiVoiceFilterEnable = 0;
+	int m_RiVoiceProtocolVersion = 0;
 	int m_RiVoiceNoiseSuppressEnable = 0;
 	int m_RiVoiceNoiseSuppressStrength = 0;
 	int m_RiVoiceCompThreshold = 0;
@@ -39,6 +41,7 @@ struct SRClientVoiceConfigSnapshot
 	int m_RiVoiceRadius = 0;
 	int m_RiVoiceVolume = 0;
 	int m_RiVoiceMicVolume = 0;
+	int m_RiVoiceMicMute = 0;
 	int m_RiVoiceTestMode = 0;
 	int m_RiVoiceVadEnable = 0;
 	int m_RiVoiceVadThreshold = 0;
@@ -115,8 +118,9 @@ class CRClientVoice
 	NETSOCKET m_Socket = nullptr;
 	NETADDR m_ServerAddr = NETADDR_ZEROED;
 	std::atomic<bool> m_ServerAddrValid = false;
+	std::atomic<bool> m_ServerAddrResolveRequested = true;
 	char m_aServerAddrStr[128] = {0};
-	int64_t m_LastServerResolveAttempt = 0;
+	std::atomic<int64_t> m_LastServerResolveAttempt = 0;
 
 	SDL_AudioDeviceID m_CaptureDevice = 0;
 	SDL_AudioDeviceID m_OutputDevice = 0;
@@ -126,13 +130,26 @@ class CRClientVoice
 	char m_aAudioBackendMismatchReq[64] = {0};
 	char m_aAudioBackendMismatchCur[64] = {0};
 	char m_aAudioInitLoggedBackend[64] = {0};
+	char m_aSocketErrorLog[256] = {0};
+	char m_aAudioErrorLog[256] = {0};
+	char m_aEncoderErrorLog[256] = {0};
+	char m_aServerAddrErrorLog[256] = {0};
+	char m_aDecoderErrorLog[256] = {0};
 	bool m_AudioSubsystemInitializedByVoice = false;
+#if defined(CONF_PLATFORM_EMSCRIPTEN)
+	bool m_UnsupportedPlatformLogged = false;
+#endif
 	char m_aInputDeviceName[128] = {0};
 	char m_aOutputDeviceName[128] = {0};
+	int64_t m_LastAudioRetryAttempt = 0;
 	bool m_OutputStereo = true;
 	bool m_LogDeviceChange = false;
 	bool m_CaptureUnavailable = false;
 	bool m_OutputUnavailable = false;
+#if defined(CONF_PLATFORM_ANDROID)
+	bool m_AndroidRecordPermissionKnown = false;
+	bool m_AndroidRecordPermissionGranted = false;
+#endif
 	float m_HpfPrevIn = 0.0f;
 	float m_HpfPrevOut = 0.0f;
 	float m_CompEnv = 0.0f;
@@ -164,11 +181,19 @@ class CRClientVoice
 	int64_t m_LastKeepalive = 0;
 	uint32_t m_LastTokenHashSent = 0;
 
+	// Debug counters (worker thread only)
+	int64_t m_TxLastLog = 0;
+	int m_TxPackets = 0;
+	int64_t m_RxLastLog = 0;
+	int m_RxPackets = 0;
+	int m_RxDropContext = 0;
+	int m_RxDropRadius = 0;
+
 	std::thread m_Worker;
 	std::atomic<bool> m_WorkerStop = false;
 	std::atomic<bool> m_WorkerEnabled = false;
+	std::atomic<bool> m_AudioRefreshRequested = true;
 	bool m_ShutdownDone = true;
-
 	std::mutex m_ServerAddrMutex;
 
 	mutable std::mutex m_ConfigMutex;
@@ -188,7 +213,8 @@ class CRClientVoice
 	bool EnsureSocket();
 	bool EnsureAudio();
 	void Shutdown();
-	void UpdateServerAddr();
+	void UpdateServerAddrConfig();
+	void ResolveServerAddr();
 	bool UpdateContext();
 	void UpdateClientSnapshot();
 	void UpdateConfigSnapshot();

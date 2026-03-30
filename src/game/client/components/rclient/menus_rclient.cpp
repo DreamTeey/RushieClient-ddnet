@@ -58,6 +58,7 @@ enum
 	RCLIENT_SETTINGS_SECTION_RCLIENT_INDICATOR,
 	RCLIENT_SETTINGS_SECTION_EDGE_INFO,
 	RCLIENT_SETTINGS_SECTION_VOICE,
+	RCLIENT_SETTINGS_SECTION_MENUS,
 	NUM_RCLIENT_SETTINGS_SECTIONS
 };
 
@@ -533,6 +534,10 @@ void CMenus::RenderSettingsRushieInfo(CUIRect MainView)
 
 void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 {
+	#define MACRO_CONFIG_CHECKBOX(Name, Desc) \
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_##Name, RCLocalize(Desc), &g_Config.m_##Name, &Column, LineSize); \
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+
 	static CScrollRegion s_ScrollRegion;
 	vec2 ScrollOffset(0.0f, 0.0f);
 	CScrollRegionParams ScrollParams;
@@ -564,7 +569,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffset.y - ScrollOffset.y;
-		Section.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		Section.Draw(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiMenusSettingsColor, true)), IGraphics::CORNER_ALL, 10.0f);
 	}
 	s_PrevScrollOffset = ScrollOffset;
 	s_SectionBoxes.clear();
@@ -579,7 +584,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	};
 
 	static bool s_aSectionExpanded[NUM_RCLIENT_SETTINGS_SECTIONS] = {
-		true, true, true, true, true, true, true, true, true,
+		true, true, true, true, true, true, true, true, true, true,
 		true, true, true, true, true, true, true, true, true};
 	static CButtonContainer s_aSectionExpandButtons[NUM_RCLIENT_SETTINGS_SECTIONS];
 
@@ -1038,6 +1043,19 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	}
 	EndSection(Column);
 
+	BeginSectionHeader(Column, MarginBetweenSections, RCLIENT_SETTINGS_SECTION_MENUS, RCLocalize("Menu"));
+	if(s_aSectionExpanded[RCLIENT_SETTINGS_SECTION_MENUS])
+	{
+		MACRO_CONFIG_CHECKBOX(RiUiNewMenu, "Show new RClient's menu");
+		MACRO_CONFIG_CHECKBOX(RiUiCustomBg, "custom RClient's menu background");
+		MACRO_CONFIG_CHECKBOX(RiUiShowTopBar, "show RClient's menu topbar");
+		MACRO_CONFIG_CHECKBOX(RiUiShowBottomBar, "show RClient's menu bottombar");
+		static CButtonContainer s_MenuColor;
+		Column.HSplitTop(LineSize, &Button, &Column);
+		DoLine_ColorPicker(&s_MenuColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Button, RCLocalize("Color of settings menu"), &g_Config.m_RiMenusSettingsColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::RiMenusSettingsColor, true)), false, nullptr, true);
+	}
+	EndSection(Column);
+
 	// Right column - Tracker pos
 	LeftView = Column;
 	Column = RightView;
@@ -1126,6 +1144,10 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 			Column.HSplitTop(LineSize, nullptr, &Column);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiToggle45degrees, RCLocalize("Toggle 45 degrees"), &g_Config.m_RiToggle45degrees, &Rightoffset, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			Column.VSplitLeft(25.0f, &Label, &Rightoffset);
+			Column.HSplitTop(LineSize, nullptr, &Column);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Ri45degreesEcho, RCLocalize("Echo 45 degrees"), &g_Config.m_Ri45degreesEcho, &Rightoffset, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
 		Column.HSplitTop(LineSize, &Label, &Column);
 		DoLine_KeyReader(Label, s_ReaderButtonSmallSens, s_ClearButtonSmallSens, RCLocalize("Small sens bind"), "+ri_small_sens");
@@ -1135,6 +1157,10 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 			Column.VSplitLeft(25.0f, &Label, &Rightoffset);
 			Column.HSplitTop(LineSize, nullptr, &Column);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiToggleSmallSens, RCLocalize("Toggle small sens"), &g_Config.m_RiToggleSmallSens, &Rightoffset, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			Column.VSplitLeft(25.0f, &Label, &Rightoffset);
+			Column.HSplitTop(LineSize, nullptr, &Column);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiSmallSensEcho, RCLocalize("Echo small sens"), &g_Config.m_RiSmallSensEcho, &Rightoffset, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
 		Column.HSplitTop(LineSize, &Label, &Column);
@@ -1286,7 +1312,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	BeginSectionHeader(Column, MarginBetweenSections, RCLIENT_SETTINGS_SECTION_RCLIENT_INDICATOR, RCLocalize("RClient User Indicator"));
 	if(s_aSectionExpanded[RCLIENT_SETTINGS_SECTION_RCLIENT_INDICATOR])
 	{
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowRclientIndicator, RCLocalize("Show RClient User indicator"), &g_Config.m_RiShowRclientIndicator, &Column, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowRclientIndicator, RCLocalize("Show RClient User indicator in nameplates"), &g_Config.m_RiShowRclientIndicator, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiRclientIndicatorIgnoreErrors, RCLocalize("Ignore indicator errors"), &g_Config.m_RiRclientIndicatorIgnoreErrors, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_RiRclientIndicatorSize, &g_Config.m_RiRclientIndicatorSize, &Button, Localize("Size of Rclient indicator icons"), -50, 100);
@@ -1404,6 +1432,10 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 				const char *pDriver = SDL_GetAudioDriver(i);
 				if(pDriver && pDriver[0] != '\0')
 				{
+					// Skip backends that are only useful for debugging or dumping audio.
+					if(str_comp_nocase(pDriver, "dummy") == 0 || str_comp_nocase(pDriver, "disk") == 0)
+						continue;
+
 					vBackendNames.emplace_back(pDriver);
 					vBackendValues.emplace_back(pDriver);
 				}
@@ -1533,39 +1565,24 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize - 4, &Label, &Column);
 		Label.VSplitLeft(LineSize, nullptr, &Label);
-		Ui()->DoLabel(&Label, RCLocalize("If change backend u need restart game"), FontSize - 4, TEXTALIGN_ML);
+		Ui()->DoLabel(&Label, RCLocalize("Backend affects all audio. Restart the game after changing it."), FontSize - 4, TEXTALIGN_ML);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		if(g_Config.m_RiVoiceEnable)
-		{
-			if(GameClient()->m_RClient.IsVoiceInputUnavailable())
-			{
-				Column.HSplitTop(LineSize, &Label, &Column);
-				Ui()->DoLabel(&Label, RCLocalize("Voice input device not available"), FontSize * 0.9f, TEXTALIGN_ML);
-			}
-			else
-				DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
-		}
-		else
-			DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
+		DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		if(g_Config.m_RiVoiceEnable)
-		{
-			if(GameClient()->m_RClient.IsVoiceOutputUnavailable())
-			{
-				Column.HSplitTop(LineSize, &Label, &Column);
-				Ui()->DoLabel(&Label, RCLocalize("Voice output device not available"), FontSize * 0.9f, TEXTALIGN_ML);
-			}
-			else
-				DoVoiceDeviceDropDown(Column, RCLocalize("Output device"), g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice), false, s_VoiceOutputDropDownState);
-		}
-		else
-			DoVoiceDeviceDropDown(Column, RCLocalize("Output device"), g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice), false, s_VoiceOutputDropDownState);
+		DoVoiceDeviceDropDown(Column, RCLocalize("Output device"), g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice), false, s_VoiceOutputDropDownState);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 		Column.HSplitTop(LineSize, nullptr, &Column);
 
 		DoVoiceSubHeader(RCLocalize("Input"));
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceVadEnable, RCLocalize("Voice activation (VAD)"), &g_Config.m_RiVoiceVadEnable, &Column, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceMicMute, RCLocalize("Mute microphone"), &g_Config.m_RiVoiceMicMute, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		static std::vector<CButtonContainer> s_vVoiceActivationButtonContainers = {{}, {}};
+		DoLine_RadioMenu(Column, RCLocalize("Voice activation:", "Voice activation"),
+			s_vVoiceActivationButtonContainers,
+			{RCLocalize("Push to talk", "Voice activation"), RCLocalize("Voice", "Voice activation")},
+			{0, 1},
+			g_Config.m_RiVoiceVadEnable);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		if(g_Config.m_RiVoiceVadEnable)
 		{
@@ -1576,22 +1593,19 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 			Ui()->DoScrollbarOption(&g_Config.m_RiVoiceVadReleaseDelayMs, &g_Config.m_RiVoiceVadReleaseDelayMs, &Button, RCLocalize("VAD release delay (ms)"), 0, 1000);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
-		static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt;
+		static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt, s_ReaderButtonVoiceMuteToggle, s_ClearButtonVoiceMuteToggle;
 		if(!g_Config.m_RiVoiceVadEnable)
 		{
 			Column.HSplitTop(LineSize, &Label, &Column);
-			DoLine_KeyReader(Label, s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt, RCLocalize("Voice PTT"), "+ri_voice_ptt");
+			DoLine_KeyReader(Label, s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt, RCLocalize("Voice button"), "+ri_voice_ptt");
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			Column.HSplitTop(LineSize, &Button, &Column);
 			Ui()->DoScrollbarOption(&g_Config.m_RiVoicePttReleaseDelayMs, &g_Config.m_RiVoicePttReleaseDelayMs, &Button, RCLocalize("PTT release delay (ms)"), 0, 1000);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
-		else
-		{
-			Column.HSplitTop(LineSize, &Label, &Column);
-			Ui()->DoLabel(&Label, RCLocalize("PTT disabled while voice activation is enabled"), FontSize * 0.9f, TEXTALIGN_ML);
-			Column.HSplitTop(MarginSmall, nullptr, &Column);
-		}
+		Column.HSplitTop(LineSize, &Label, &Column);
+		DoLine_KeyReader(Label, s_ReaderButtonVoiceMuteToggle, s_ClearButtonVoiceMuteToggle, RCLocalize("Mic Mute toggle"), "toggle ri_voice_mic_mute 1 0");
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_RiVoiceMicVolume, &g_Config.m_RiVoiceMicVolume, &Button, RCLocalize("Microphone volume"), 0, 300);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -1620,12 +1634,12 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceHearVad, RCLocalize("Hear players using voice activation"), &g_Config.m_RiVoiceHearVad, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		static std::vector<CButtonContainer> s_vVoiceTeamVisibilityButtonContainers = {{}, {}};
+		static std::vector<CButtonContainer> s_vVoiceTeamVisibilityButtonContainers = {{}, {}, {}};
 		DoLine_RadioMenu(Column, RCLocalize("Hear people that:", "VoiceChat"),
 			s_vVoiceTeamVisibilityButtonContainers,
-			{RCLocalize("You see", "VoiceChat"), RCLocalize("In team", "VoiceChat")},
-			{0, 1},
-			g_Config.m_RiVoiceListMode);
+			{RCLocalize("You see", "VoiceChat"), RCLocalize("In team", "VoiceChat"), RCLocalize("All", "VoiceChat")},
+			{0, 1, 2},
+			g_Config.m_RiVoiceVisibilityMode);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		static SDropDownSimple s_VoiceGroupModeDrop;
 		g_Config.m_RiVoiceGroupMode = DoSimpleDropDown(

@@ -759,14 +759,14 @@ void CMenus::RenderLoading(const char *pCaption, const char *pContent, int Incre
 
 	Ui()->MapScreen();
 
-	if(GameClient()->m_MenuBackground.IsLoading())
+	if(!g_Config.m_RiUiCustomBg && GameClient()->m_MenuBackground.IsLoading())
 	{
 		// Avoid rendering while loading the menu background as this would otherwise
 		// cause the regular menu background to be rendered for a few frames while
 		// the menu background is not loaded yet.
 		return;
 	}
-	if(!GameClient()->m_MenuBackground.Render())
+	if(g_Config.m_RiUiCustomBg || !GameClient()->m_MenuBackground.Render())
 	{
 		RenderBackground();
 	}
@@ -847,6 +847,7 @@ void CMenus::OnInterfacesInit(CGameClient *pClient)
 	m_MenusIngameTouchControls.OnInterfacesInit(pClient);
 	m_MenusSettingsControls.OnInterfacesInit(pClient);
 	m_MenusStart.OnInterfacesInit(pClient);
+	m_MenusStartRClient.OnInterfacesInit(pClient);
 	m_CommunityIcons.OnInterfacesInit(pClient);
 }
 
@@ -1027,33 +1028,32 @@ void CMenus::Render()
 		m_CommunityIcons.Update();
 	}
 
-	if(ServerBrowser()->DDNetInfoAvailable())
+	// Initially add DDNet as favorite community and select its tab.
+	// This must be delayed until the DDNet info is available.
+	if(m_CreateDefaultFavoriteCommunities &&
+		ServerBrowser()->DDNetInfoAvailable())
 	{
-		// Initially add DDNet as favorite community and select its tab.
-		// This must be delayed until the DDNet info is available.
-		if(m_CreateDefaultFavoriteCommunities)
+		m_CreateDefaultFavoriteCommunities = false;
+		if(ServerBrowser()->Community(IServerBrowser::COMMUNITY_DDNET) != nullptr)
 		{
-			m_CreateDefaultFavoriteCommunities = false;
-			if(ServerBrowser()->Community(IServerBrowser::COMMUNITY_DDNET) != nullptr)
-			{
-				ServerBrowser()->FavoriteCommunitiesFilter().Clear();
-				ServerBrowser()->FavoriteCommunitiesFilter().Add(IServerBrowser::COMMUNITY_DDNET);
-				SetMenuPage(PAGE_FAVORITE_COMMUNITY_1);
-				ServerBrowser()->Refresh(IServerBrowser::TYPE_FAVORITE_COMMUNITY_1);
-			}
+			ServerBrowser()->FavoriteCommunitiesFilter().Clear();
+			ServerBrowser()->FavoriteCommunitiesFilter().Add(IServerBrowser::COMMUNITY_DDNET);
+			SetMenuPage(PAGE_FAVORITE_COMMUNITY_1);
+			ServerBrowser()->Refresh(IServerBrowser::TYPE_FAVORITE_COMMUNITY_1);
 		}
-
-		if(m_JoinTutorial && m_Popup == POPUP_NONE && !ServerBrowser()->IsGettingServerlist())
+	}
+	if(m_JoinTutorial.m_Queued && m_Popup == POPUP_NONE)
+	{
+		const char *pAddr = ServerBrowser()->GetTutorialServer();
+		if(pAddr)
 		{
-			m_JoinTutorial = false;
-			// This is only reached on first launch, when the DDNet community tab has been created and
-			// activated by default, so the server info for the tutorial server should be available.
-			const char *pAddr = ServerBrowser()->GetTutorialServer();
-			if(pAddr)
-			{
-				Client()->Connect(pAddr);
-			}
+			Client()->Connect(pAddr);
 		}
+		else
+		{
+			m_Popup = POPUP_JOIN_TUTORIAL;
+		}
+		m_JoinTutorial.m_Queued = false;
 	}
 
 	// Determine the client state once before rendering because it can change
@@ -1068,7 +1068,7 @@ void CMenus::Render()
 	}
 	else
 	{
-		if(!GameClient()->m_MenuBackground.Render())
+		if(g_Config.m_RiUiCustomBg || !GameClient()->m_MenuBackground.Render())
 		{
 			RenderBackground();
 		}
@@ -1105,7 +1105,11 @@ void CMenus::Render()
 		}
 		else if(m_ShowStart)
 		{
-			m_MenusStart.RenderStartMenu(Screen);
+			if(!g_Config.m_RiUiNewMenu)
+				m_MenusStart.RenderStartMenu(Screen);
+			else
+				m_MenusStartRClient.RenderStartMenu(Screen);
+
 		}
 		else
 		{
@@ -1286,6 +1290,10 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		pButtonText = Localize("Ok");
 		TopAlign = true;
 	}
+	else if(m_Popup == POPUP_JOIN_TUTORIAL)
+	{
+		pTitle = Localize("Joining Tutorial server");
+	}
 	else if(m_Popup == POPUP_POINTS)
 	{
 		pTitle = Localize("Existing Player");
@@ -1317,35 +1325,46 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 	CUIRect Box, Part;
 	Box = Screen;
 	if(m_Popup != POPUP_FIRST_LAUNCH)
+	{
 		Box.Margin(150.0f, &Box);
+	}
 
-	// render the box
+	// Background
 	Box.Draw(BgColor, IGraphics::CORNER_ALL, 15.0f);
 
-	Box.HSplitTop(20.f, &Part, &Box);
-	Box.HSplitTop(24.f, &Part, &Box);
-	Part.VMargin(20.f, &Part);
-	SLabelProperties Props;
-	Props.m_MaxWidth = (int)Part.w;
+	// Title
+	{
+		CUIRect Title;
+		Box.HSplitTop(20.0f, nullptr, &Box);
+		Box.HSplitTop(24.0f, &Title, &Box);
+		Box.HSplitTop(20.0f, nullptr, &Box);
+		Title.VMargin(20.0f, &Title);
 
-	if(TextRender()->TextWidth(24.f, pTitle, -1, -1.0f) > Part.w)
-		Ui()->DoLabel(&Part, pTitle, 24.f, TEXTALIGN_ML, Props);
-	else
-		Ui()->DoLabel(&Part, pTitle, 24.f, TEXTALIGN_MC);
+		const float TitleFontSize = 24.0f;
+		if(TextRender()->TextWidth(TitleFontSize, pTitle) > Title.w)
+			Ui()->DoLabel(&Title, pTitle, TitleFontSize, TEXTALIGN_ML, {.m_MaxWidth = Title.w});
+		else
+			Ui()->DoLabel(&Title, pTitle, TitleFontSize, TEXTALIGN_MC);
+	}
 
-	Box.HSplitTop(20.f, &Part, &Box);
-	Box.HSplitTop(24.f, &Part, &Box);
-	Part.VMargin(20.f, &Part);
+	// Extra text (optional)
+	if(m_Popup != POPUP_JOIN_TUTORIAL)
+	{
+		CUIRect ExtraText;
+		Box.HSplitTop(24.0f, &ExtraText, &Box);
+		ExtraText.VMargin(20.0f, &ExtraText);
+		if(pExtraText[0] != '\0')
+		{
+			const float ExtraTextFontSize = m_Popup == POPUP_FIRST_LAUNCH ? 16.0f : 20.0f;
 
-	float FontSize = m_Popup == POPUP_FIRST_LAUNCH ? 16.0f : 20.f;
-
-	Props.m_MaxWidth = (int)Part.w;
-	if(TopAlign)
-		Ui()->DoLabel(&Part, pExtraText, FontSize, TEXTALIGN_TL, Props);
-	else if(TextRender()->TextWidth(FontSize, pExtraText, -1, -1.0f) > Part.w)
-		Ui()->DoLabel(&Part, pExtraText, FontSize, TEXTALIGN_ML, Props);
-	else
-		Ui()->DoLabel(&Part, pExtraText, FontSize, TEXTALIGN_MC);
+			if(TopAlign)
+				Ui()->DoLabel(&ExtraText, pExtraText, ExtraTextFontSize, TEXTALIGN_TL, {.m_MaxWidth = ExtraText.w});
+			else if(TextRender()->TextWidth(ExtraTextFontSize, pExtraText) > ExtraText.w)
+				Ui()->DoLabel(&ExtraText, pExtraText, ExtraTextFontSize, TEXTALIGN_ML, {.m_MaxWidth = ExtraText.w});
+			else
+				Ui()->DoLabel(&ExtraText, pExtraText, ExtraTextFontSize, TEXTALIGN_MC);
+		}
+	}
 
 	if(m_Popup == POPUP_MESSAGE || m_Popup == POPUP_CONFIRM)
 	{
@@ -1394,14 +1413,12 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		if(GameClient()->Editor()->HasUnsavedData())
 		{
 			str_format(aBuf, sizeof(aBuf), "%s\n\n%s", Localize("There's an unsaved map in the editor, you might want to save it."), Localize("Continue anyway?"));
-			Props.m_MaxWidth = Part.w - 20.0f;
-			Ui()->DoLabel(&Box, aBuf, 20.f, TEXTALIGN_ML, Props);
+			Ui()->DoLabel(&Box, aBuf, 20.0f, TEXTALIGN_ML, {.m_MaxWidth = Part.w - 20.0f});
 		}
 		else if(GameClient()->m_TouchControls.HasEditingChanges() || m_MenusIngameTouchControls.UnsavedChanges())
 		{
 			str_format(aBuf, sizeof(aBuf), "%s\n\n%s", Localize("There's an unsaved change in the touch controls editor, you might want to save it."), Localize("Continue anyway?"));
-			Props.m_MaxWidth = Part.w - 20.0f;
-			Ui()->DoLabel(&Box, aBuf, 20.f, TEXTALIGN_ML, Props);
+			Ui()->DoLabel(&Box, aBuf, 20.0f, TEXTALIGN_ML, {.m_MaxWidth = Part.w - 20.0f});
 		}
 
 		// buttons
@@ -1755,15 +1772,14 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		static CButtonContainer s_JoinTutorialButton;
 		if(DoButton_Menu(&s_JoinTutorialButton, Localize("Join Tutorial Server"), 0, &Join) || Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER))
 		{
-			m_JoinTutorial = true;
 			Client()->RequestDDNetInfo();
 			m_Popup = g_Config.m_BrIndicateFinished ? POPUP_POINTS : POPUP_NONE;
+			JoinTutorial();
 		}
 
 		static CButtonContainer s_SkipTutorialButton;
 		if(DoButton_Menu(&s_SkipTutorialButton, Localize("Skip Tutorial"), 0, &Skip) || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
 		{
-			m_JoinTutorial = false;
 			Client()->RequestDDNetInfo();
 			m_Popup = g_Config.m_BrIndicateFinished ? POPUP_POINTS : POPUP_NONE;
 		}
@@ -1790,6 +1806,193 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		static CLineInput s_PlayerNameInput(g_Config.m_PlayerName, sizeof(g_Config.m_PlayerName));
 		s_PlayerNameInput.SetEmptyText(Client()->PlayerName());
 		Ui()->DoEditBox(&s_PlayerNameInput, &TextBox, 12.0f);
+	}
+	else if(m_Popup == POPUP_JOIN_TUTORIAL)
+	{
+		CUIRect ButtonBar, StatusLabel, ProgressLabel, ProgressIndicator;
+		Box.HSplitBottom(20.0f, &Box, nullptr);
+		Box.HSplitBottom(24.0f, &Box, &ButtonBar);
+		ButtonBar.VMargin(120.0f, &ButtonBar);
+		Box.HSplitBottom(20.0f, &StatusLabel, nullptr);
+		StatusLabel.VMargin(20.0f, &StatusLabel);
+		StatusLabel.HSplitMid(&StatusLabel, &ProgressLabel);
+		ProgressLabel.VSplitLeft(50.0f, &ProgressIndicator, &ProgressLabel);
+
+		if(m_JoinTutorial.m_Status == CJoinTutorial::EStatus::REFRESHING)
+		{
+			if(ServerBrowser()->IsGettingServerlist() ||
+				Client()->InfoState() == IClient::EInfoState::LOADING)
+			{
+				// Still refreshing
+			}
+			else if(ServerBrowser()->IsServerlistError() ||
+				Client()->InfoState() == IClient::EInfoState::ERROR)
+			{
+				m_JoinTutorial.m_Status = CJoinTutorial::EStatus::SERVER_LIST_ERROR;
+			}
+			else
+			{
+				const char *pAddr = ServerBrowser()->GetTutorialServer();
+				if(pAddr)
+				{
+					Client()->Connect(pAddr);
+				}
+				else
+				{
+					m_JoinTutorial.m_Status = CJoinTutorial::EStatus::NO_TUTORIAL_AVAILABLE;
+				}
+			}
+		}
+
+		const char *pStatusLabel = nullptr;
+		switch(m_JoinTutorial.m_Status)
+		{
+		case CJoinTutorial::EStatus::REFRESHING:
+			pStatusLabel = Localize("Getting server list from master server");
+			break;
+		case CJoinTutorial::EStatus::SERVER_LIST_ERROR:
+			pStatusLabel = Localize("Could not get server list from master server");
+			break;
+		case CJoinTutorial::EStatus::NO_TUTORIAL_AVAILABLE:
+			pStatusLabel = Localize("There are no Tutorial servers available");
+			break;
+		}
+		if(pStatusLabel != nullptr)
+		{
+			Ui()->DoLabel(&StatusLabel, pStatusLabel, 20.0f, TEXTALIGN_ML);
+		}
+
+		const char *pProgressLabel = nullptr;
+		bool ProgressDeterminate = true;
+		const float LastStateChangeSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(time_get_nanoseconds() - m_JoinTutorial.m_StateChange).count();
+		constexpr float RefreshDelay = 5.0f;
+
+		if(m_JoinTutorial.m_Status == CJoinTutorial::EStatus::REFRESHING)
+		{
+			pProgressLabel = Localize("Please wait…");
+			ProgressDeterminate = false;
+		}
+		else if(!m_JoinTutorial.m_TryRefresh)
+		{
+			if(!m_JoinTutorial.m_TriedRefresh)
+			{
+				m_JoinTutorial.m_TryRefresh = true;
+				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
+			}
+			else if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::NOT_TRIED)
+			{
+				m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::TRY;
+				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
+			}
+		}
+
+		if(m_JoinTutorial.m_TryRefresh)
+		{
+			if(LastStateChangeSeconds >= RefreshDelay)
+			{
+				// Activate internet tab before joining tutorial to make sure the server info
+				// for the tutorial servers is available.
+				GameClient()->m_Menus.SetMenuPage(CMenus::PAGE_INTERNET);
+				GameClient()->m_Menus.RefreshBrowserTab(true);
+				m_JoinTutorial.m_Status = CJoinTutorial::EStatus::REFRESHING;
+				m_JoinTutorial.m_TryRefresh = false;
+				m_JoinTutorial.m_TriedRefresh = true;
+				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
+			}
+			else
+			{
+				pProgressLabel = Localize("Retrying…");
+			}
+		}
+
+		const auto &&ShowFinalErrorMessage = [&]() {
+			PopupMessage(Localize("Error joining Tutorial server"), Localize("Could not find a Tutorial server. Check your internet connection."), Localize("Ok"));
+		};
+		const auto &&RunServer = [&]() {
+			char aMotd[256];
+			str_copy(aMotd, "sv_motd \"");
+			char *pDst = aMotd + str_length(aMotd);
+			str_escape(&pDst, Localize("You're playing on a local server because no online Tutorial server could be found.\n\nYour record will only be saved locally."), aMotd + sizeof(aMotd) - 1);
+			str_append(aMotd, "\"");
+			if(GameClient()->m_LocalServer.RunServer({"sv_register 0", "sv_map Tutorial", aMotd}))
+			{
+				m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::WAITING_START;
+				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
+			}
+			else
+			{
+				ShowFinalErrorMessage();
+			}
+		};
+		if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::TRY)
+		{
+			if(LastStateChangeSeconds >= RefreshDelay)
+			{
+				if(GameClient()->m_LocalServer.IsServerRunning())
+				{
+					GameClient()->m_LocalServer.KillServer();
+					m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::WAITING_STOP;
+					m_JoinTutorial.m_StateChange = time_get_nanoseconds();
+				}
+				else
+				{
+					RunServer();
+				}
+			}
+			else
+			{
+				pProgressLabel = Localize("Could not find online Tutorial server.\nStarting and connecting to local server…");
+			}
+		}
+		else if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::WAITING_STOP)
+		{
+			if(LastStateChangeSeconds >= 5.0f)
+			{
+				ShowFinalErrorMessage();
+			}
+			else
+			{
+				if(!GameClient()->m_LocalServer.IsServerRunning())
+				{
+					RunServer();
+				}
+
+				pProgressLabel = Localize("Waiting for local server to stop…");
+				ProgressDeterminate = false;
+			}
+		}
+		else if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::WAITING_START)
+		{
+			if(LastStateChangeSeconds >= 5.0f)
+			{
+				ShowFinalErrorMessage();
+			}
+			else
+			{
+				if(LastStateChangeSeconds >= 2.0f &&
+					GameClient()->m_LocalServer.IsServerRunning())
+				{
+					Client()->Connect("localhost");
+				}
+
+				pProgressLabel = Localize("Waiting for local server to start…");
+				ProgressDeterminate = false;
+			}
+		}
+
+		if(pProgressLabel != nullptr)
+		{
+			Ui()->RenderProgressSpinner(ProgressIndicator.Center(), 12.0f, {.m_Progress = ProgressDeterminate ? (LastStateChangeSeconds / RefreshDelay) : -1.0f});
+			Ui()->DoLabel(&ProgressLabel, pProgressLabel, 20.0f, TEXTALIGN_ML);
+		}
+
+		static CButtonContainer s_Button;
+		if(DoButton_Menu(&s_Button, Localize("Cancel"), 0, &ButtonBar) ||
+			Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE) ||
+			Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER))
+		{
+			m_Popup = POPUP_NONE;
+		}
 	}
 	else if(m_Popup == POPUP_POINTS)
 	{
@@ -2376,6 +2579,148 @@ void CMenus::RenderBackground()
 	const float ScreenWidth = ScreenHeight * Graphics()->ScreenAspect();
 	Graphics()->MapScreen(0.0f, 0.0f, ScreenWidth, ScreenHeight);
 
+	if(g_Config.m_RiUiCustomBg)
+	{
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor4(
+			ColorRGBA(0.05f, 0.07f, 0.11f, 1.0f),
+			ColorRGBA(0.10f, 0.08f, 0.13f, 1.0f),
+			ColorRGBA(0.01f, 0.02f, 0.05f, 1.0f),
+			ColorRGBA(0.04f, 0.03f, 0.08f, 1.0f));
+		const IGraphics::CQuadItem BackgroundQuadItem = IGraphics::CQuadItem(0, 0, ScreenWidth, ScreenHeight);
+		Graphics()->QuadsDrawTL(&BackgroundQuadItem, 1);
+		Graphics()->QuadsEnd();
+
+		const float GlobalTime = Client()->GlobalTime();
+		const float GridSize = 22.0f;
+		const float GridMovement = GlobalTime * 10.0f;
+		const float GridOffset = std::fmod(GridMovement, GridSize);
+		CSkins::CSkinList &SkinList = GameClient()->m_Skins.SkinList();
+		const CSkin *pDefaultSkin = GameClient()->m_Skins.Find("default");
+		std::vector<CSkins::CSkinListEntry *> vpSkinEntries;
+		vpSkinEntries.reserve(SkinList.Skins().size());
+		for(CSkins::CSkinListEntry &SkinEntry : SkinList.Skins())
+		{
+			const CSkins::CSkinContainer *pSkinContainer = SkinEntry.SkinContainer();
+			if(pSkinContainer == nullptr)
+				continue;
+
+			vpSkinEntries.push_back(&SkinEntry);
+		}
+
+		if(!vpSkinEntries.empty())
+		{
+			const CAnimState *pIdleState = CAnimState::GetIdle();
+			const float CellTeeSize = GridSize * 0.68f;
+			const float TeeScreenPadding = CellTeeSize;
+			const vec2 MousePos(
+				Ui()->MousePos().x * ScreenWidth / Ui()->Screen()->w,
+				Ui()->MousePos().y * ScreenHeight / Ui()->Screen()->h);
+			CTeeRenderInfo BaseSkinInfo;
+			BaseSkinInfo.Apply(GameClient()->m_Skins.Find(g_Config.m_ClPlayerSkin));
+			BaseSkinInfo.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
+			BaseSkinInfo.m_Size = CellTeeSize;
+			const auto HashCell = [](int CellX, int CellY) {
+				unsigned Hash = 2166136261u;
+				Hash = (Hash ^ (unsigned)CellX) * 16777619u;
+				Hash = (Hash ^ (unsigned)CellY) * 16777619u;
+				Hash ^= Hash >> 16;
+				Hash *= 0x7feb352du;
+				Hash ^= Hash >> 15;
+				return Hash;
+			};
+
+			const int StartWorldCellX = (int)std::floor(GridMovement / GridSize) - 1;
+			const int StartWorldCellY = (int)std::floor(-GridMovement / GridSize) - 1;
+			for(int WorldCellY = StartWorldCellY;; WorldCellY++)
+			{
+				const float CenterY = WorldCellY * GridSize + GridSize * 0.5f + GridMovement;
+				if(CenterY >= ScreenHeight + TeeScreenPadding)
+					break;
+				if(CenterY < -TeeScreenPadding)
+					continue;
+
+				for(int WorldCellX = StartWorldCellX;; WorldCellX++)
+				{
+					const float CenterX = WorldCellX * GridSize + GridSize * 0.5f - GridMovement;
+					if(CenterX >= ScreenWidth + TeeScreenPadding)
+						break;
+					if(CenterX < -TeeScreenPadding)
+						continue;
+
+					const unsigned CellHash = HashCell(WorldCellX, WorldCellY);
+					if(CellHash % 11u != 0)
+						continue;
+
+					CSkins::CSkinListEntry *pSkinEntry = vpSkinEntries[CellHash % vpSkinEntries.size()];
+					pSkinEntry->RequestLoad();
+
+					const CSkins::CSkinContainer *pSkinContainer = pSkinEntry->SkinContainer();
+					const CSkin *pSkin = pSkinContainer != nullptr && pSkinContainer->State() == CSkins::CSkinContainer::EState::LOADED ? pSkinContainer->Skin().get() : pDefaultSkin;
+					CTeeRenderInfo TeeInfo = BaseSkinInfo;
+					TeeInfo.Apply(pSkin);
+
+					vec2 TeeOffsetToMid;
+					CRenderTools::GetRenderTeeOffsetToRenderedTee(pIdleState, &TeeInfo, TeeOffsetToMid);
+					const float FloatOffset = sinf(GlobalTime * 0.8f + (float)(CellHash % 360u)) * 0.6f;
+					const vec2 TeePos(CenterX, CenterY + TeeOffsetToMid.y + FloatOffset);
+					const vec2 DeltaPosition = MousePos - TeePos;
+					const float Distance = length(DeltaPosition);
+					const float InteractionDistance = CellTeeSize * 0.45f;
+					const vec2 TeeDir = Distance < InteractionDistance ? normalize(vec2(DeltaPosition.x, maximum(DeltaPosition.y, 0.5f))) : normalize(DeltaPosition);
+					const int TeeEmote = Distance < InteractionDistance ? EMOTE_HAPPY : g_Config.m_ClPlayerDefaultEyes;
+					RenderTools()->RenderTee(pIdleState, &TeeInfo, TeeEmote, TeeDir, TeePos);
+				}
+			}
+		}
+
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.035f);
+		IGraphics::CQuadItem aGridItems[128];
+		const int MaxGridItems = static_cast<int>(std::size(aGridItems));
+		int NumGridItems = 0;
+		for(float x = -GridOffset; x < ScreenWidth + GridSize; x += GridSize)
+		{
+			aGridItems[NumGridItems++] = IGraphics::CQuadItem(x, 0.0f, 1.0f, ScreenHeight);
+			if(NumGridItems == MaxGridItems)
+			{
+				Graphics()->QuadsDrawTL(aGridItems, NumGridItems);
+				NumGridItems = 0;
+			}
+		}
+		for(float y = GridOffset - GridSize; y < ScreenHeight + GridSize; y += GridSize)
+		{
+			aGridItems[NumGridItems++] = IGraphics::CQuadItem(0.0f, y, ScreenWidth, 1.0f);
+			if(NumGridItems == MaxGridItems)
+			{
+				Graphics()->QuadsDrawTL(aGridItems, NumGridItems);
+				NumGridItems = 0;
+			}
+		}
+		if(NumGridItems > 0)
+			Graphics()->QuadsDrawTL(aGridItems, NumGridItems);
+		Graphics()->QuadsEnd();
+
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		const IGraphics::CQuadItem TopTintQuad = IGraphics::CQuadItem(0.0f, 0.0f, ScreenWidth, ScreenHeight * 0.28f);
+		Graphics()->SetColor4(
+			ColorRGBA(0.05f, 0.24f, 0.28f, 0.08f),
+			ColorRGBA(0.26f, 0.08f, 0.17f, 0.08f),
+			ColorRGBA(0.05f, 0.24f, 0.28f, 0.0f),
+			ColorRGBA(0.26f, 0.08f, 0.17f, 0.0f));
+		Graphics()->QuadsDrawTL(&TopTintQuad, 1);
+		Graphics()->SetColor(0.01f, 0.02f, 0.05f, 0.20f);
+		const IGraphics::CQuadItem VignetteQuad = IGraphics::CQuadItem(-100.0f, -100.0f, ScreenWidth + 200.0f, ScreenHeight + 200.0f);
+		Graphics()->QuadsDrawTL(&VignetteQuad, 1);
+		Graphics()->QuadsEnd();
+
+		Ui()->MapScreen();
+		return;
+	}
+
 	// render background color
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
@@ -2569,4 +2914,14 @@ void CMenus::SetShowStart(bool ShowStart)
 void CMenus::ShowQuitPopup()
 {
 	m_Popup = POPUP_QUIT;
+}
+
+void CMenus::JoinTutorial()
+{
+	m_JoinTutorial.m_Queued = true;
+	m_JoinTutorial.m_Status = CJoinTutorial::EStatus::REFRESHING;
+	m_JoinTutorial.m_TryRefresh = false;
+	m_JoinTutorial.m_TriedRefresh = false;
+	m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::NOT_TRIED;
+	m_JoinTutorial.m_StateChange = time_get_nanoseconds();
 }

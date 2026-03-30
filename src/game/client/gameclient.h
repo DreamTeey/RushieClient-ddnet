@@ -85,6 +85,7 @@
 #include "components/tclient/bindwheel.h"
 #include "components/tclient/custom_communities.h"
 #include "components/tclient/mod.h"
+#include "components/tclient/moving_tiles.h"
 #include "components/tclient/mumble.h"
 #include "components/tclient/outlines.h"
 #include "components/tclient/pet.h"
@@ -101,7 +102,10 @@
 #include "components/touch_controls.h"
 #include "components/voting.h"
 
+#include <memory>
 #include <vector>
+
+class IMap;
 
 class CGameInfo
 {
@@ -244,6 +248,8 @@ public:
 	CScripting m_Scripting;
 	CMod m_Mod;
 	CCustomCommunities m_CustomCommunities;
+	CMovingTiles m_MovingTilesBackground = CMovingTiles{ false };
+	CMovingTiles m_MovingTilesForeground = CMovingTiles{ true };
 
 	// RClient Components
 	CChatBubbles m_ChatBubbles;
@@ -743,6 +749,7 @@ public:
 	void SendReadyChange7();
 
 	void ApplyPreInputs(int Tick, bool Direct, CGameWorld &GameWorld);
+	bool GetDummyFastInput(CNetObj_PlayerInput &DummyFastInput, const CNetObj_PlayerInput *pDummyInputData, const class CCharacter *pDummyChar, int LocalTee, int DummyTee) const;
 
 	int m_aNextChangeInfo[NUM_DUMMIES];
 
@@ -778,6 +785,10 @@ public:
 	CGameWorld m_GameWorld;
 	CGameWorld m_PredictedWorld;
 	CGameWorld m_PrevPredictedWorld;
+
+	// TClient
+	CGameWorld m_RegularPredictedWorld;
+	CGameWorld m_PrevRegularPredictedWorld;
 	// TClient
 	CGameWorld m_ExtraPredictedWorld;
 	CGameWorld m_PredSmoothingWorld;
@@ -794,6 +805,9 @@ public:
 	int SwitchStateTeam() const;
 	bool IsLocalCharSuper() const;
 	bool CanDisplayWarning() const override;
+
+	IMap *Map() override { return m_pMap.get(); }
+	const IMap *Map() const override { return m_pMap.get(); }
 	CNetObjHandler *GetNetObjHandler() override;
 	protocol7::CNetObjHandler *GetNetObjHandler7() override;
 
@@ -996,6 +1010,8 @@ public:
 	char m_aMapDescription[512];
 
 private:
+	std::unique_ptr<IMap> m_pMap;
+
 	std::vector<CSnapEntities> m_vSnapEntities;
 	void SnapCollectEntities();
 

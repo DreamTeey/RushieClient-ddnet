@@ -2,6 +2,8 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "scoreboard.h"
 
+#include <base/time.h>
+
 #include <engine/console.h>
 #include <engine/demo.h>
 #include <engine/font_icons.h>
@@ -413,7 +415,9 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 					GameClient()->m_RClient.GetScoreboardHeight(false, ShowQuickActions, m_ScoreboardPopupContext.m_ClientId), &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
 			}
 
-			if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId || Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_SpectatorSecondLineButtonId)
+			if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId ||
+				Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_SpectatorSecondLineButtonId ||
+				(Ui()->IsPopupOpen(&m_ScoreboardPopupContext) && m_ScoreboardPopupContext.m_ClientId == pInfo->m_ClientId))
 			{
 				if(!LineBreakDetected)
 				{
@@ -550,17 +554,16 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 			const CNetObj_PlayerInfo *pInfo = GameClient()->m_RClient.GetSortingScoreSpec(g_Config.m_RiScoreboardSortById, i);
 			if(!pInfo || pInfo->m_Team != Team)
 				continue;
-
-			if(CountRendered++ < CountStart)
-				continue;
-
-			int DDTeam = GameClient()->m_Teams.Team(pInfo->m_ClientId);
-			int NextDDTeam = 0;
 			bool IsDead = Client()->m_TranslationContext.m_aClients[pInfo->m_ClientId].m_PlayerFlags7 & protocol7::PLAYERFLAG_DEAD;
 			if(!RenderDead && IsDead)
 				continue;
 			if(RenderDead && !IsDead)
 				continue;
+			if(CountRendered++ < CountStart)
+				continue;
+
+			int DDTeam = GameClient()->m_Teams.Team(pInfo->m_ClientId);
+			int NextDDTeam = 0;
 
 			ColorRGBA TextColor = TextRender()->DefaultTextColor();
 			TextColor.a = RenderDead ? 0.5f : 1.0f;
@@ -666,7 +669,8 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 						GameClient()->m_RClient.GetScoreboardHeight(true, ShowQuickActions, m_ScoreboardPopupContext.m_ClientId), &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
 				}
 
-				if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId)
+				if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId ||
+					(Ui()->IsPopupOpen(&m_ScoreboardPopupContext) && m_ScoreboardPopupContext.m_ClientId == pInfo->m_ClientId))
 				{
 					Row.Draw(ColorRGBA(0.7f, 0.7f, 0.7f, 0.7f), IGraphics::CORNER_ALL, RoundRadius);
 				}
@@ -738,7 +742,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 
 			// name
 			{
-				const bool ShowRClientIndicator = g_Config.m_RiShowRclientIndicator && g_Config.m_RiScoreboardShowRclientIndicator &&
+				const bool ShowRClientIndicator = g_Config.m_RiScoreboardShowRclientIndicator &&
 					GameClient()->m_RClientIndicator.IsPlayerRClient(pInfo->m_ClientId) &&
 					(g_Config.m_RiRclientIndicatorAboveSelf || !pInfo->m_Local);
 				CTextCursor Cursor;
@@ -859,6 +863,8 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 			if(CountRendered == CountEnd)
 				break;
 		}
+		if(CountRendered == CountEnd)
+			break;
 	}
 }
 
@@ -870,7 +876,7 @@ void CScoreboard::RenderRecordingNotification(float x)
 		if(GameClient()->DemoRecorder(Recorder)->IsRecording())
 		{
 			char aTime[32];
-			str_time((int64_t)GameClient()->DemoRecorder(Recorder)->Length() * 100, TIME_HOURS, aTime, sizeof(aTime));
+			str_time((int64_t)GameClient()->DemoRecorder(Recorder)->Length() * 100, ETimeFormat::HOURS, aTime, sizeof(aTime));
 			str_append(aBuf, pName);
 			str_append(aBuf, " ");
 			str_append(aBuf, aTime);
@@ -1014,7 +1020,7 @@ void CScoreboard::OnRender()
 		}
 		else
 		{
-			pTitle = Client()->GetCurrentMap();
+			pTitle = GameClient()->Map()->BaseName();
 		}
 
 		CUIRect Title;

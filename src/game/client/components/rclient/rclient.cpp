@@ -841,7 +841,8 @@ void CRClient::ConToggle45Degrees(IConsole::IResult *pResult, void *pUserData)
 	{
 		if(pSelf->m_45degreestoggle && !pSelf->m_45degreestogglelastinput)
 		{
-			pSelf->GameClient()->Echo("[[green]] 45° on");
+			if(g_Config.m_Ri45degreesEcho)
+				pSelf->GameClient()->Echo("[[green]] 45° on");
 			pSelf->m_45degreesEnabled = 1;
 			pSelf->m_45degreesSensOld = (pSelf->m_SmallsensEnabled == 1 ? pSelf->m_SmallsensOld : g_Config.m_InpMousesens);
 			pSelf->m_45degreesDistanceOld = g_Config.m_ClMouseMaxDistance;
@@ -851,7 +852,8 @@ void CRClient::ConToggle45Degrees(IConsole::IResult *pResult, void *pUserData)
 		else if(!pSelf->m_45degreestoggle)
 		{
 			pSelf->m_45degreesEnabled = 0;
-			pSelf->GameClient()->Echo("[[red]] 45° off");
+			if(g_Config.m_Ri45degreesEcho)
+				pSelf->GameClient()->Echo("[[red]] 45° off");
 			g_Config.m_ClMouseMaxDistance = pSelf->m_45degreesDistanceOld;
 			g_Config.m_InpMousesens = pSelf->m_45degreesSensOld;
 		}
@@ -865,14 +867,16 @@ void CRClient::ConToggle45Degrees(IConsole::IResult *pResult, void *pUserData)
 			if(g_Config.m_ClMouseMaxDistance == 2)
 			{
 				pSelf->m_45degreesEnabled = 0;
-				pSelf->GameClient()->Echo("[[red]] 45° off");
+				if(g_Config.m_Ri45degreesEcho)
+					pSelf->GameClient()->Echo("[[red]] 45° off");
 				g_Config.m_ClMouseMaxDistance = pSelf->m_45degreesDistanceOld;
 				g_Config.m_InpMousesens = pSelf->m_45degreesSensOld;
 			}
 			else
 			{
 				pSelf->m_45degreesEnabled = 1;
-				pSelf->GameClient()->Echo("[[green]] 45° on");
+				if(g_Config.m_Ri45degreesEcho)
+					pSelf->GameClient()->Echo("[[green]] 45° on");
 				pSelf->m_45degreesSensOld = (pSelf->m_SmallsensEnabled == 1 ? pSelf->m_SmallsensOld : g_Config.m_InpMousesens);
 				pSelf->m_45degreesDistanceOld = g_Config.m_ClMouseMaxDistance;
 				g_Config.m_ClMouseMaxDistance = 2;
@@ -892,14 +896,16 @@ void CRClient::ConToggleSmallSens(IConsole::IResult *pResult, void *pUserData)
 		if(pSelf->m_Smallsenstoggle && !pSelf->m_Smallsenstogglelastinput)
 		{
 			pSelf->m_SmallsensEnabled = 1;
-			pSelf->GameClient()->Echo("[[green]] small sens on");
+			if(g_Config.m_RiSmallSensEcho)
+				pSelf->GameClient()->Echo("[[green]] small sens on");
 			pSelf->m_SmallsensOld = (pSelf->m_45degreesEnabled == 1 ? pSelf->m_45degreesSensOld : g_Config.m_InpMousesens);
 			g_Config.m_InpMousesens = 1;
 		}
 		else if(!pSelf->m_Smallsenstoggle)
 		{
 			pSelf->m_SmallsensEnabled = 0;
-			pSelf->GameClient()->Echo("[[red]] small sens off");
+			if(g_Config.m_RiSmallSensEcho)
+				pSelf->GameClient()->Echo("[[red]] small sens off");
 			g_Config.m_InpMousesens = pSelf->m_SmallsensOld;
 		}
 		pSelf->m_Smallsenstogglelastinput = pSelf->m_Smallsenstoggle;
@@ -912,13 +918,15 @@ void CRClient::ConToggleSmallSens(IConsole::IResult *pResult, void *pUserData)
 			if(g_Config.m_InpMousesens == 1)
 			{
 				pSelf->m_SmallsensEnabled = 0;
-				pSelf->GameClient()->Echo("[[red]] small sens off");
+				if(g_Config.m_RiSmallSensEcho)
+					pSelf->GameClient()->Echo("[[red]] small sens off");
 				g_Config.m_InpMousesens = pSelf->m_SmallsensOld;
 			}
 			else
 			{
 				pSelf->m_SmallsensEnabled = 1;
-				pSelf->GameClient()->Echo("[[green]] small sens on");
+				if(g_Config.m_RiSmallSensEcho)
+					pSelf->GameClient()->Echo("[[green]] small sens on");
 				pSelf->m_SmallsensOld = (pSelf->m_45degreesEnabled == 1 ? pSelf->m_45degreesSensOld : g_Config.m_InpMousesens);
 				g_Config.m_InpMousesens = 1;
 			}
