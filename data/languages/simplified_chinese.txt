@@ -2606,69 +2606,70 @@ Player is currently authed in rcon.
 Demo player is currently active.
 == 回放播放器正在运行。
 
+
 The extra menu with the given number is activated.
 == 指定编号的额外菜单已激活。
 
 Joining Tutorial server
-== 
+== 正在加入教程服务器
 
 There are no Tutorial servers available
-== 
+== 没有可用的教程服务器
 
 Retrying…
-== 
+== 重试中…
 
 Error joining Tutorial server
-== 
+== 加入教程服务器出错
 
 Could not find a Tutorial server. Check your internet connection.
-== 
+== 找不到教程服务器。请检查您的网络连接。
 
 You're playing on a local server because no online Tutorial server could be found.\n\nYour record will only be saved locally.
-== 
+== 由于找不到在线教程服务器，您正在本地服务器上游戏。\n\n您的记录将仅保存在本地。
 
 Could not find online Tutorial server.\nStarting and connecting to local server…
-== 
+== 找不到在线教程服务器。\n正在启动并连接本地服务器…
 
 Waiting for local server to stop…
-== 
+== 等待本地服务器停止…
 
 Waiting for local server to start…
-== 
+== 等待本地服务器启动…
 
 Error loading communities
-== 
+== 加载社区时出错
 
 Click to remove this community from your favorites.
-== 
+== 点击将此社区从收藏中移除。
 
 Click to add this community to your favorites.
-== 
+== 点击将此社区添加到收藏夹。
 
 Update Rate
-== 
+== 更新速率
 
 Save power by lowering update rate (higher input latency)
-== 
+== 通过降低更新速率节省电量（更高的输入延迟）
 
 Colors of the hook collision line:
-== 
+== 钩子碰撞线颜色：
 
 [Hook collision line color]
 When nothing is hookable
-== 
+== 无可钩物体时
 
 [Hook collision line color]
 When something is hookable
-== 
+== 有可钩物体时
 
 [Hook collision line color]
 When a Tee is hookable
-== 
+== 有可钩玩家时
 
 [Hook collision line color]
 Hook collision line tip
-== 
+== 钩子碰撞线尖端
 
 Profile
 == 查看资料

@@ -680,8 +680,8 @@ Output device
 Use ri_voice_list_devices in console
 == 在控制台使用 ri_voice_list_devices
 
-Voice PTT
-== 语音按键通话
+Voice button
+== 语音按钮
 
 [VoiceChat]
 Block people with:
@@ -862,3 +862,49 @@ Noise suppressor (RNNoise)
 
 Noise suppressor
 == 降噪器
+
+Mute microphone
+== 麦克风静音
+
+Mic Mute toggle
+== 麦克风静音开关
+
+[VoiceChat]
+All
+== 全部
+
+Show new RClient's menu
+== 显示新版 RClient 菜单
+
+custom RClient's menu background
+== 自定义 RClient 菜单背景
+
+show RClient's menu topbar
+== 显示 RClient 菜单顶栏
+
+show RClient's menu bottombar
+== 显示 RClient 菜单底栏
+
+Menu
+== 菜单
+
+Color of settings menu
+== 设置菜单颜色
+
+[Voice activation]
+Voice activation:
+== 语音激活：
+
+[Voice activation]
+Push to talk
+== 按键通话
+
+[Voice activation]
+Voice
+== 语音
+
+VAD threshold (%)
+== 语音激活阈值（%）
+
+VAD release delay (ms)
+== 语音激活释放延迟（毫秒）
