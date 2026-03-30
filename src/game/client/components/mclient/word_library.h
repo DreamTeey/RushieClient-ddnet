@@ -127,6 +127,7 @@ public:
 	int Sizeof() const override { return sizeof(*this); }
 	void OnConsoleInit() override;
 	void OnNewSnapshot() override;
+	void OnStateChange(int NewState, int OldState) override;
 };
 
 #endif // GAME_CLIENT_COMPONENTS_MCLIENT_WORD_LIBRARY_H

@@ -176,7 +176,51 @@ bool CMClient::IsFriendInCurrentServer(const CServerInfo *pFriendServerInfo) con
 
 void CMClient::SendGreetingMessage(const char *pFriendName)
 {
-	// 准备打招呼文本
+	// 检查是否配置了词库分组
+	if(g_Config.m_McFriendGreetWordGroup[0] != '\0')
+	{
+		// 查找词库分组
+		CWordGroup *pGroup = GameClient()->m_WordLibrary.FindGroup(g_Config.m_McFriendGreetWordGroup);
+		if(pGroup)
+		{
+			// 获取该分组的所有消息
+			std::vector<CWordMessage*> vGroupMessages;
+			for(const auto &Message : GameClient()->m_WordLibrary.GetMessages())
+			{
+				if(Message.m_pGroup == pGroup)
+					vGroupMessages.push_back(const_cast<CWordMessage*>(&Message));
+			}
+
+			if(!vGroupMessages.empty())
+			{
+				// 随机选择一条消息
+				int Index = secure_rand_below(vGroupMessages.size());
+				CWordMessage *pMsg = vGroupMessages[Index];
+
+				// 替换 {name} 为好友名字
+				char aGreetText[MAX_WORD_MESSAGE_LENGTH];
+				str_copy(aGreetText, pMsg->m_aContent, sizeof(aGreetText));
+
+				const char *pPos = str_find(aGreetText, "{name}");
+				if(pPos)
+				{
+					char aNewGreetText[MAX_WORD_MESSAGE_LENGTH];
+					int PrefixLen = pPos - aGreetText;
+					str_copy(aNewGreetText, aGreetText, PrefixLen + 1);
+					str_append(aNewGreetText, pFriendName, sizeof(aNewGreetText));
+					str_append(aNewGreetText, pPos + str_length("{name}"), sizeof(aNewGreetText));
+					str_copy(aGreetText, aNewGreetText, sizeof(aGreetText));
+				}
+
+				// 发送打招呼消息
+				GameClient()->m_Chat.SendChat(0, aGreetText);
+				return;
+			}
+		}
+		// 分组不存在或为空时，使用默认方式
+	}
+
+	// 默认：使用自定义打招呼文本
 	char aGreetText[256];
 	str_copy(aGreetText, g_Config.m_McFriendAutoGreetText, sizeof(aGreetText));
 

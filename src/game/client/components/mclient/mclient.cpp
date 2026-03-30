@@ -851,8 +851,12 @@ void CMClient::ProcessAutoPlusOne(const char *pMessage, int ClientId)
 	if(pMessage[0] == '/')
 		return;
 
-	// 检查是否是系统/服务器消息（ClientId == -1）
+	// 检查是否是系统/服务器消息（ClientId < 0 表示服务器消息）
 	if(ClientId < 0)
+		return;
+
+	// 屏蔽特定的系统消息
+	if(str_find(pMessage, "Do you know someone who uses a bot?") != nullptr)
 		return;
 
 	// 检查冷却时间

@@ -355,16 +355,69 @@ void CMenus::RenderSettingsMClientSettings(CUIRect MainView)
                 DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_McFriendAutoGreet, MCLocalize("好友进图自动打招呼"), &g_Config.m_McFriendAutoGreet, pRect, LineSize);
             });
             if(g_Config.m_McFriendAutoGreet) {
+                // 词库分组选择 - 点击循环切换
                 DoSubOption(pCol, [&](CUIRect* pRect) {
+                    // 获取词库分组列表
+                    static std::vector<std::string> s_vGroupIds;
+                    static std::vector<std::string> s_vGroupDisplayNames;
+                    s_vGroupIds.clear();
+                    s_vGroupDisplayNames.clear();
+
+                    // 添加选项
+                    s_vGroupIds.push_back("");
+                    s_vGroupDisplayNames.push_back("(输入文本)");
+
+                    const auto &Groups = GameClient()->m_WordLibrary.GetGroups();
+                    for(const auto *pGroup : Groups)
+                    {
+                        s_vGroupIds.push_back(pGroup->m_aId);
+                        s_vGroupDisplayNames.push_back(pGroup->m_aDisplayName);
+                    }
+
+                    // 查找当前选中的索引
+                    int SelectedIndex = 0;
+                    for(size_t i = 0; i < s_vGroupIds.size(); i++)
+                    {
+                        if(str_comp(s_vGroupIds[i].c_str(), g_Config.m_McFriendGreetWordGroup) == 0)
+                        {
+                            SelectedIndex = i;
+                            break;
+                        }
+                    }
+
+                    // 渲染按钮显示当前选中
+                    CUIRect Btn;
+                    pRect->HSplitTop(LineSize, &Btn, pRect);
+                    Btn.VSplitLeft(130.0f, &Btn, pRect);
+                    static CButtonContainer s_GroupBtn;
+                    const char *pLabel = SelectedIndex < (int)s_vGroupDisplayNames.size() ? 
+                        s_vGroupDisplayNames[SelectedIndex].c_str() : "";
+                    if(DoButton_Menu(&s_GroupBtn, pLabel, 0, &Btn))
+                    {
+                        // 循环切换选项
+                        SelectedIndex = (SelectedIndex + 1) % s_vGroupIds.size();
+                        str_copy(g_Config.m_McFriendGreetWordGroup, s_vGroupIds[SelectedIndex].c_str(), 
+                            sizeof(g_Config.m_McFriendGreetWordGroup));
+                    }
                     CUIRect Label;
                     pRect->HSplitTop(LineSize, &Label, pRect);
-                    Label.VSplitLeft(100.0f, &Label, pRect);
-                    Ui()->DoLabel(&Label, MCLocalize("打招呼文本"), 12.0f, TEXTALIGN_ML);
-                    if(Ui()->DoEditBox(&s_FriendGreetInput, pRect, 12.0f))
-                    {
-                        str_copy(g_Config.m_McFriendAutoGreetText, s_FriendGreetInput.GetString(), sizeof(g_Config.m_McFriendAutoGreetText));
-                    }
+                    Ui()->DoLabel(&Label, MCLocalize("词库分组"), 12.0f, TEXTALIGN_ML);
                 });
+
+                // 只有没有选择词库分组时才显示打招呼文本输入框
+                if(g_Config.m_McFriendGreetWordGroup[0] == '\0')
+                {
+                    DoSubOption(pCol, [&](CUIRect* pRect) {
+                        CUIRect Label;
+                        pRect->HSplitTop(LineSize, &Label, pRect);
+                        Label.VSplitLeft(100.0f, &Label, pRect);
+                        Ui()->DoLabel(&Label, MCLocalize("打招呼文本"), 12.0f, TEXTALIGN_ML);
+                        if(Ui()->DoEditBox(&s_FriendGreetInput, pRect, 12.0f))
+                        {
+                            str_copy(g_Config.m_McFriendAutoGreetText, s_FriendGreetInput.GetString(), sizeof(g_Config.m_McFriendAutoGreetText));
+                        }
+                    });
+                }
             }
         }
 

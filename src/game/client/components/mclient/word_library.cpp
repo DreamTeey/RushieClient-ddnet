@@ -15,6 +15,15 @@ CWordLibrary::CWordLibrary()
 	m_LastSendTime = 0.0f;
 }
 
+void CWordLibrary::OnStateChange(int NewState, int OldState)
+{
+	// 离开在线状态时重置冷却时间
+	if(OldState == IClient::STATE_ONLINE && NewState != IClient::STATE_ONLINE)
+	{
+		m_LastSendTime = 0.0f;
+	}
+}
+
 CWordLibrary::~CWordLibrary()
 {
 	// 清理分组指针
