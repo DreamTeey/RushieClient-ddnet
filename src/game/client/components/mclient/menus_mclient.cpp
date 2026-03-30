@@ -39,8 +39,8 @@ static CLineInputBuffered<MAX_WORD_MESSAGE_LENGTH> s_WordMessageInput;
 enum
 {
 	MCLIENT_TAB_SETTINGS = 0,
-	MCLIENT_TAB_INFO,
 	MCLIENT_TAB_WORD_LIBRARY,
+	MCLIENT_TAB_INFO,
 	NUMBER_OF_MCLIENT_TABS
 };
 
@@ -96,8 +96,8 @@ void CMenus::RenderSettingsMClient(CUIRect MainView)
 	static CButtonContainer s_aPageTabs[NUMBER_OF_MCLIENT_TABS] = {};
 	const char *apTabNames[] = {
 		MCLocalize("Settings"),
-		MCLocalize("Info"),
-		MCLocalize("Word Library")};
+		MCLocalize("快捷短语"),
+		MCLocalize("Info")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_MCLIENT_TABS; ++Tab)
 	{
@@ -413,13 +413,8 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 	LeftView.HSplitMid(&LeftView, &LowerLeftView, 0.0f);
 
 	LeftView.HSplitTop(HeadlineHeight, &Label, &LeftView);
-	Ui()->DoLabel(&Label, MCLocalize("MClient Links"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, MCLocalize("空的"), HeadlineFontSize, TEXTALIGN_ML);
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
-
-	static CButtonContainer s_WebsiteButton;
-	LeftView.HSplitTop(LineSize * 2.0f, &Button, &LeftView);
-	if(DoButton_Menu(&s_WebsiteButton, MCLocalize("Website"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
-		Client()->ViewLink("https://github.com");
 
 	LeftView = LowerLeftView;
 	LeftView.HSplitBottom(LineSize * 4.0f + MarginSmall * 2.0f + HeadlineFontSize, nullptr, &LeftView);
@@ -441,7 +436,7 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 	// =======RIGHT VIEW========
 
 	RightView.HSplitTop(HeadlineHeight, &Label, &RightView);
-	Ui()->DoLabel(&Label, MCLocalize("MClient Developer"), HeadlineFontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Label, MCLocalize("MClient 开发者"), HeadlineFontSize, TEXTALIGN_ML);
 	RightView.HSplitTop(MarginSmall, nullptr, &RightView);
 	RightView.HSplitTop(MarginSmall, nullptr, &RightView);
 
@@ -451,11 +446,12 @@ void CMenus::RenderSettingsMClientInfo(CUIRect MainView)
 	{
 		RightView.HSplitTop(CardSize, &DevCardRect, &RightView);
 		DevCardRect.VSplitLeft(CardSize, &TeeRect, &Label);
-		Label.VSplitLeft(TextRender()->TextWidth(12.0f, "Developer"), &Label, &Button);
+		Label.VSplitLeft(TextRender()->TextWidth(12.0f, "宝娟我嗓zi"), &Label, &Button);
 		Button.VSplitLeft(MarginSmall, nullptr, &Button);
 		Button.w = LineSize, Button.h = LineSize, Button.y = Label.y + (Label.h / 2.0f - Button.h / 2.0f);
-		Ui()->DoLabel(&Label, "Developer", 12.0f, TEXTALIGN_ML);
-		// RenderDevSkin(TeeRect.Center(), 50.0f, "default", "default", false, 0, 0, 0, false, true);
+		Ui()->DoLabel(&Label, "宝娟我嗓zi", 12.0f, TEXTALIGN_ML);
+		// 渲染开发者皮肤
+		RenderDevSkin(TeeRect.Center(), 50.0f, "10Nanami_glow", "10Nanami_glow", true, 0, 0, 2, false, true, ColorRGBA(1.00f, 1.00f, 1.00f, 1.00f), ColorRGBA(0.72f, 1.00f, 0.50f, 1.00f));
 	}
 }
 
