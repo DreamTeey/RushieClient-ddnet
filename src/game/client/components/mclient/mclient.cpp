@@ -260,12 +260,22 @@ void CMClient::CheckFriendJoinMap()
 				const char *pName = GameClient()->m_aClients[i].m_aName;
 				const char *pClan = GameClient()->m_aClients[i].m_aClan;
 
-				// 检查是否是好友
-				if(GameClient()->Friends()->IsFriend(pName, pClan, true))
+				// 获取本地玩家和分身的名称
+				int LocalId = GameClient()->m_Snap.m_LocalClientId;
+				int DummyId = GameClient()->m_Snap.m_LocalClientId >= 0 ? GameClient()->m_aLocalIds[!g_Config.m_ClDummy] : -1;
+
+				const char *pLocalName = (LocalId >= 0 && LocalId < MAX_CLIENTS) ? GameClient()->m_aClients[LocalId].m_aName : "";
+				const char *pDummyName = (DummyId >= 0 && DummyId < MAX_CLIENTS) ? GameClient()->m_aClients[DummyId].m_aName : "";
+
+				// 排除自己和分身
+				if(str_comp(pName, pLocalName) == 0 || str_comp(pName, pDummyName) == 0)
 				{
-					// 触发好友进入地图打招呼
+					// 是自己或分身，不打招呼
+				}
+				else if(GameClient()->Friends()->IsFriend(pName, pClan, true))
+				{
+					// 是好友，触发打招呼
 					SendGreetingMessage(pName);
-					// dbg_msg("mclient-friend", "Friend '%s' joined the map", pName);
 				}
 			}
 		}
@@ -470,9 +480,9 @@ bool CMClient::CheckBeingHammered(const vec2& LocalPos, int LocalId, int& Attack
 		if(!pAttacker)
 			continue;
 
-		// 检查攻击者是否在使用锤子并按下攻击键
-		const CNetObj_PlayerInput *pInput = &GameClient()->m_aClients[i].m_Predicted.m_Input;
-		if(!pInput || pInput->m_WantedWeapon != WEAPON_HAMMER || !(pInput->m_Fire & 1))
+		// 获取攻击者的当前武器（从角色对象获取，而不是从输入预测）
+		int Weapon = pAttacker->GetActiveWeapon();
+		if(Weapon != WEAPON_HAMMER)
 			continue;
 
 		// 检查攻击者的锤子是否被禁用
@@ -483,7 +493,15 @@ bool CMClient::CheckBeingHammered(const vec2& LocalPos, int LocalId, int& Attack
 		if(!pAttacker->CanCollide(LocalId))
 			continue;
 
-		// 计算攻击者的锤击方向和起始位置
+		// 使用攻击者的输入方向计算锤击位置
+		const CNetObj_PlayerInput *pInput = &GameClient()->m_aClients[i].m_Predicted.m_Input;
+		if(!pInput)
+			continue;
+
+		// 必须按下攻击键
+		if(!(pInput->m_Fire & 1))
+			continue;
+
 		const vec2 Dir = normalize(vec2(pInput->m_TargetX, pInput->m_TargetY));
 		const float Radius = HAMMER_RADIUS; // 28.0f
 		const vec2 ProjStartPos = pAttacker->GetPos() + Dir * Radius * 0.75f;
@@ -833,6 +851,10 @@ void CMClient::ProcessAutoPlusOne(const char *pMessage, int ClientId)
 	if(pMessage[0] == '/')
 		return;
 
+	// 检查是否是系统/服务器消息（ClientId == -1）
+	if(ClientId < 0)
+		return;
+
 	// 检查冷却时间
 	float TimeDiff = Client()->LocalTime() - m_LastPlusOneTime;
 	if(TimeDiff < g_Config.m_McAutoPlusOneCooldown)
@@ -878,8 +900,8 @@ void CMClient::ProcessAutoPlusOne(const char *pMessage, int ClientId)
 	{
 		// 更新上一条消息
 		str_copy(m_aPreviousMessage, pMessage, sizeof(m_aPreviousMessage));
-		// dbg_msg("mclient", "Updated previous message: %s", m_aPreviousMessage);
-	}
+		// dbg_msg("mclient", "Updated previous message: %s", pMessage);
+}
 }
 
 void CMClient::CheckAutoPlusOne()
@@ -1064,23 +1086,10 @@ void CMClient::ConHookAngleResetCallback(IConsole::IResult *pResult, void *pUser
 
 void CMClient::UpdateHookAngleHelper()
 {
-	// 获取本地玩家
-	const CNetObj_PlayerInfo *pLocalInfo = GameClient()->m_Snap.m_pLocalInfo;
-	if(!pLocalInfo)
-	{
-		// dbg_msg("mclient", "Hook angle helper: No local player info");
-		return;
-	}
-
-	// 获取本地玩家位置
-	vec2 LocalPos = GameClient()->m_Snap.m_pLocalCharacter ?
-				vec2(GameClient()->m_Snap.m_pLocalCharacter->m_X, GameClient()->m_Snap.m_pLocalCharacter->m_Y) :
-				vec2(0, 0);
-	if(LocalPos.x == 0 && LocalPos.y == 0)
-	{
-		// dbg_msg("mclient", "Hook angle helper: Invalid local pos");
-		return;
-	}
+    // 与 weapon_trajectory.cpp 一致，使用 m_LocalCharacterPos
+    vec2 LocalPos = GameClient()->m_LocalCharacterPos;
+    if(LocalPos.x == 0 && LocalPos.y == 0)
+        return;
 
 	// 获取当前鼠标角度
 	vec2 MousePos = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
@@ -1240,27 +1249,12 @@ void CMClient::UpdateHookAngleHelper()
 void CMClient::RenderHookAngleHelper()
 {
 	if(!m_HasBestAngle)
-	{
-		// dbg_msg("mclient", "Hook angle helper: No best angle to render");
 		return;
-	}
 
-	// 获取本地玩家位置
-	const CNetObj_PlayerInfo *pLocalInfo = GameClient()->m_Snap.m_pLocalInfo;
-	if(!pLocalInfo)
-	{
-		// dbg_msg("mclient", "Hook angle helper: No local player info for render");
-		return;
-	}
-
-	vec2 LocalPos = GameClient()->m_Snap.m_pLocalCharacter ?
-				vec2(GameClient()->m_Snap.m_pLocalCharacter->m_X, GameClient()->m_Snap.m_pLocalCharacter->m_Y) :
-				vec2(0, 0);
+	// 与 weapon_trajectory.cpp 一致，使用 m_LocalCharacterPos
+	vec2 LocalPos = GameClient()->m_LocalCharacterPos;
 	if(LocalPos.x == 0 && LocalPos.y == 0)
-	{
-		// dbg_msg("mclient", "Hook angle helper: Invalid local pos for render");
 		return;
-	}
 
 	// 绘制扫描范围（扇形）
 	if(g_Config.m_McHookAngleShowScanRange && !m_vAngleResults.empty())
