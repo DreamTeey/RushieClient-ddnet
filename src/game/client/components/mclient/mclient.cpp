@@ -65,6 +65,43 @@ void CMClient::OnInit()
 	UpdateFriendList();
 }
 
+void CMClient::OnStateChange(int NewState, int OldState)
+{
+	// 当离开游戏（离线/连接中/加载中）时，重置需要重新初始化的变量
+	// 避免下一局游戏时出现异常状态
+
+	// 离开在线状态时重置
+	if(OldState == IClient::STATE_ONLINE && NewState != IClient::STATE_ONLINE)
+	{
+		// 重置好友进入地图检测状态
+		mem_zero(m_aPrevPlayerActive, sizeof(m_aPrevPlayerActive));
+
+		// 重置钩子角度辅助状态
+		m_HookAngleHelperEnabled = false;
+		m_HasBestAngle = false;
+		m_vAngleResults.clear();
+
+		// 重置最后勾我的玩家
+		m_LastHookedByClientId = -1;
+		m_LastHookedByTime = 0;
+		mem_zero(m_aLastHookedByName, sizeof(m_aLastHookedByName));
+
+		// 重置克隆相关
+		m_LastClonedClientId = -1;
+
+		// 重置最后复读消息
+		m_HasLastMessage = false;
+		mem_zero(m_aLastMessage, sizeof(m_aLastMessage));
+
+		// 重置自动加一相关
+		m_HasPreviousMessage = false;
+		mem_zero(m_aPreviousMessage, sizeof(m_aPreviousMessage));
+		mem_zero(m_aLastRepeatedMessage, sizeof(m_aLastRepeatedMessage));
+
+		dbg_msg("mclient", "Reset state on leave game (old=%d, new=%d)", OldState, NewState);
+	}
+}
+
 void CMClient::OnConsoleInit()
 {
 	// 注册武器切换命令（支持按键绑定和直接执行）

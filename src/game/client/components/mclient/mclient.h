@@ -25,6 +25,7 @@ public:
 	virtual void OnConsoleInit() override;
 	virtual void OnRender() override;
 	virtual void OnMessage(int MsgType, void *pRawMsg) override;
+	virtual void OnStateChange(int NewState, int OldState) override;
 	
 	// 最后勾我的玩家相关（公开给其他组件访问）
 	int m_LastHookedByClientId; // 最后勾我的玩家的客户端ID
