@@ -188,7 +188,16 @@ void CWeaponTrajectory::SimulateProjectile(vec2 StartPos, vec2 Direction, int We
 	}
 
 	vec4 Color = GetWeaponColor(Weapon);
-	DrawTrajectory(Path, Color);
+
+	// 手雷使用专用绘制方法
+	if(Weapon == WEAPON_GRENADE)
+	{
+		DrawGrenadeTrajectory(Path, Color);
+	}
+	else
+	{
+		DrawTrajectory(Path, Color);
+	}
 }
 
 void CWeaponTrajectory::SimulateLaser(vec2 StartPos, vec2 Direction, int Weapon, int TuneZone)
@@ -293,6 +302,118 @@ void CWeaponTrajectory::DrawTrajectory(const std::vector<vec2> &Path, const vec4
 
 	Graphics()->LinesDraw(vLines.data(), vLines.size());
 
+	Graphics()->LinesEnd();
+
+	// 恢复之前的屏幕映射
+	Graphics()->MapScreen(OldTLX, OldTLY, OldBRX, OldBRY);
+}
+
+void CWeaponTrajectory::DrawGrenadeTrajectory(const std::vector<vec2> &Path, const vec4 &Color)
+{
+	if(Path.size() < 2)
+		return;
+
+	// 使用当前相机设置世界坐标映射
+	float OldTLX, OldTLY, OldBRX, OldBRY;
+	Graphics()->GetScreen(&OldTLX, &OldTLY, &OldBRX, &OldBRY);
+
+	float Width, Height;
+	Graphics()->CalcScreenParams(Graphics()->ScreenAspect(), GameClient()->m_Camera.m_Zoom, &Width, &Height);
+	Graphics()->MapScreen(
+		GameClient()->m_Camera.m_Center.x - Width / 2.0f,
+		GameClient()->m_Camera.m_Center.y - Height / 2.0f,
+		GameClient()->m_Camera.m_Center.x + Width / 2.0f,
+		GameClient()->m_Camera.m_Center.y + Height / 2.0f);
+
+	Graphics()->TextureClear();
+
+	// 收集所有线条，一次性绘制
+	std::vector<IGraphics::CLineItem> vAllLines;
+
+	// 1. 主轨迹线（渐变效果）
+	for(size_t i = 0; i < Path.size() - 1; i++)
+	{
+		// 简单处理：使用统一颜色
+		vAllLines.emplace_back(Path[i], Path[i + 1]);
+	}
+
+	// 2. 轨迹点标记（圆圈线条）
+	const int PointInterval = 15;
+	const float PointRadius = 3.0f;
+	const int CircleSegments = 12;
+	for(size_t i = 0; i < Path.size(); i += PointInterval)
+	{
+		for(int s = 0; s < CircleSegments; s++)
+		{
+			float Angle1 = (float)s / (float)CircleSegments * 2.0f * pi;
+			float Angle2 = (float)(s + 1) / (float)CircleSegments * 2.0f * pi;
+			vec2 P1 = Path[i] + vec2(cos(Angle1), sin(Angle1)) * PointRadius;
+			vec2 P2 = Path[i] + vec2(cos(Angle2), sin(Angle2)) * PointRadius;
+			vAllLines.emplace_back(P1, P2);
+		}
+	}
+
+	// 3. 爆炸范围填充（半透明红色）+ 十字标记
+	if(Path.size() >= 2)
+	{
+		vec2 EndPos = Path.back();
+		float ExplosionRadius = 100.0f;
+		const int Segments = 32;
+
+		// 绘制半透明填充圆（使用退化四边形绘制三角形扇）
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(Color.r, Color.g, Color.b, Color.a * 0.25f); // 25% 透明度填充
+
+		for(int i = 0; i < Segments; i++)
+		{
+			float Angle1 = (float)i / (float)Segments * 2.0f * pi;
+			float Angle2 = (float)(i + 1) / (float)Segments * 2.0f * pi;
+
+			float x1 = EndPos.x + cos(Angle1) * ExplosionRadius;
+			float y1 = EndPos.y + sin(Angle1) * ExplosionRadius;
+			float x2 = EndPos.x + cos(Angle2) * ExplosionRadius;
+			float y2 = EndPos.y + sin(Angle2) * ExplosionRadius;
+
+			// 退化四边形：p0=p1=中心, p2=点1, p3=点2 → 形成三角形
+			IGraphics::CFreeformItem Quad(EndPos.x, EndPos.y, EndPos.x, EndPos.y, x1, y1, x2, y2);
+			Graphics()->QuadsDrawFreeform(&Quad, 1);
+		}
+		Graphics()->QuadsEnd();
+
+		// 绘制爆炸范围虚线轮廓
+		Graphics()->LinesBegin();
+		Graphics()->SetColor(Color.r, Color.g, Color.b, Color.a * 0.6f);
+		const int DashInterval = 4;
+		for(int i = 0; i < Segments; i++)
+		{
+			if(i % DashInterval >= DashInterval / 2)
+				continue;
+
+			float Angle1 = (float)i / (float)Segments * 2.0f * pi;
+			float Angle2 = (float)(i + 1) / (float)Segments * 2.0f * pi;
+			vec2 P1 = EndPos + vec2(cos(Angle1), sin(Angle1)) * ExplosionRadius;
+			vec2 P2 = EndPos + vec2(cos(Angle2), sin(Angle2)) * ExplosionRadius;
+			vAllLines.emplace_back(P1, P2);
+		}
+		Graphics()->LinesDraw(vAllLines.data(), vAllLines.size());
+		Graphics()->LinesEnd();
+
+		// 碰撞点十字标记
+		float CrossSize = 8.0f;
+		Graphics()->LinesBegin();
+		Graphics()->SetColor(Color.r, Color.g, Color.b, Color.a);
+		IGraphics::CLineItem Cross1(EndPos - vec2(CrossSize, 0), EndPos + vec2(CrossSize, 0));
+		IGraphics::CLineItem Cross2(EndPos - vec2(0, CrossSize), EndPos + vec2(0, CrossSize));
+		Graphics()->LinesDraw(&Cross1, 1);
+		Graphics()->LinesDraw(&Cross2, 1);
+		Graphics()->LinesEnd();
+	}
+
+	// 一次性绘制所有线条
+	Graphics()->LinesBegin();
+	Graphics()->SetColor(Color.r, Color.g, Color.b, Color.a);
+	Graphics()->LinesDraw(vAllLines.data(), vAllLines.size());
 	Graphics()->LinesEnd();
 
 	// 恢复之前的屏幕映射

@@ -32,6 +32,9 @@ private:
 
 	// 绘制线条
 	void DrawTrajectory(const std::vector<vec2> &Path, const vec4 &Color);
+
+	// 手雷专用绘制（渐变线 + 轨迹点 + 爆炸范围）
+	void DrawGrenadeTrajectory(const std::vector<vec2> &Path, const vec4 &Color);
 };
 
 #endif // GAME_CLIENT_COMPONENTS_MCLIENT_WEAPON_TRAJECTORY_H
