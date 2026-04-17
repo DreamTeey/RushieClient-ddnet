@@ -1701,16 +1701,16 @@ set(EXPECTED_DATA
   maps/dm7.map
   maps/dm8.map
   maps/dm9.map
-  maps/Gold Mine.map
+  maps/Gold_Mine.map
   maps/LearnToPlay.map
   maps/license.txt
-  maps/Sunny Side Up.map
+  maps/Sunny_Side_Up.map
   maps/Tsunami.map
   maps/Tutorial.map
-  maps7/Gold Mine.map
+  maps7/Gold_Mine.map
   maps7/LearnToPlay.map
   maps7/readme.txt
-  maps7/Sunny Side Up.map
+  maps7/Sunny_Side_Up.map
   maps7/Tsunami.map
   maps7/Tutorial.map
   menuimages/demos.png
