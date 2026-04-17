@@ -106,8 +106,8 @@ Right jump
 Deepfly toggle
 == 深飞开关
 
-Auto Change Player Info
-== 自动切换玩家信息
+Player Inspector
+== 玩家检查器
 
 [Chatbinds]
 Find skin
@@ -605,8 +605,8 @@ Ignore distance
 Stereo output (pan left/right)
 == 立体声输出（左/右声像）
 
-Voice filter (HPF+compressor+limiter)
-== 语音滤镜（高通滤波+压缩器+限幅器）
+Voice filter (HPF+compressor+soft limiter)
+== 语音滤镜（高通滤波+压缩器+软限幅器）
 
 Filter presets
 == 滤镜预设
@@ -908,3 +908,311 @@ VAD threshold (%)
 
 VAD release delay (ms)
 == 语音激活释放延迟（毫秒）
+
+Checkpoint:
+== 检查点：
+
+Dummy Change Clan
+== 假人切换战队
+
+Add player to the filter white list
+== 添加玩家到过滤白名单
+
+Chat Animate
+== 聊天动画
+
+Chat Filter
+== 聊天过滤器
+
+Chat Utils
+== 聊天工具
+
+Show cursor when chat is open
+== 聊天打开时显示光标
+
+Show chat scrollbar
+== 显示聊天滚动条
+
+Scoreboard Sort
+== 记分板排序
+
+Scoreboard Heart
+== 记分板爱心
+
+Scoreboard Actions
+== 记分板操作
+
+Freeze inputs when unlock mouse
+== 解锁鼠标时冻结输入
+
+Nameplates Scheme
+== 名牌方案
+
+Nameplates Show Fire
+== 名牌显示锤子
+
+Nameplates Show Hook
+== 名牌显示钩子
+
+Dummy Tracker
+== 假人追踪器
+
+Advanced Dummy Hud
+== 高级假人 HUD
+
+Trails
+== 轨迹
+
+AFK Emote/Texture In Menu
+== 菜单中 AFK 表情/纹理
+
+AFK Emote/Texture In Spec
+== 观战中 AFK 表情/纹理
+
+Disable Frozen Flakes
+== 禁用冻结雪花
+
+Show when muted
+== 静音时显示
+
+Hide Hammer Hit
+== 隐藏锤子击中
+
+Sound On Move
+== 移动时声音
+
+Freeze inputs when new menu opened
+== 打开新菜单时冻结输入
+
+Skip open new RClient's menu
+== 跳过打开新版 RClient 菜单
+
+Open new menu
+== 打开新菜单
+
+Music Player
+== 音乐播放器
+
+Show music island
+== 显示音乐岛
+
+Show cover image
+== 显示封面图片
+
+Show visualizer
+== 显示可视化效果
+
+Show full timer
+== 显示完整计时器
+
+Minimum width
+== 最小宽度
+
+Maximum width
+== 最大宽度
+
+Dynamic width expansion
+== 动态宽度扩展
+
+Show visualizer sections
+== 显示可视化分区
+
+Game timer:
+== 游戏计时器：
+
+[Music]
+Full
+== 完整
+
+[Music]
+Scroll
+== 滚动
+
+Show visualizer sections
+== 显示可视化分区
+
+Music island color
+== 音乐岛颜色
+
+Section gaps color
+== 分区间隙颜色
+
+Tracker
+== 追踪器
+
+Millisecond In Game Timer
+== 游戏计时器毫秒
+
+Heart Size In Nameplate
+== 名牌爱心大小
+
+Binds
+== 绑定
+
+Better Lasers (Pulse)
+== 更好的激光（Pulse）
+
+Spectator Move
+== 观战移动
+
+Spectator Sort
+== 观战排序
+
+Player Menu
+== 玩家菜单
+
+Chat Bubbles (Entity)
+== 聊天泡泡（实体）
+
+Show RClient User indicator in nameplates
+== 在名牌中显示 RClient 用户标识
+
+Ignore indicator errors
+== 忽略标识错误
+
+Output
+== 输出
+
+Advanced devices
+== 高级设备
+
+Testing
+== 测试
+
+Microphone level
+== 麦克风音量
+
+Listening
+== 收听
+
+VAD listening
+== VAD 收听
+
+Always hear these VAD players
+== 始终收听这些 VAD 玩家
+
+Groups
+== 群组
+
+Processing
+== 处理
+
+Stereo width (%)
+== 立体声宽度（%）
+
+Overlay & Indicator
+== 覆盖层与标识
+
+Show muted players
+== 显示静音玩家
+
+Show muted in nameplates
+== 在名牌中显示静音
+
+Show muted in overlay
+== 在覆盖层中显示静音
+
+Open changed voice mix
+== 打开更改的语音混合
+
+Chatbinds
+== 聊天绑定
+
+Percent In Vote Bar
+== 投票栏百分比
+
+Show procent in vote bar
+== 在投票栏显示百分比
+
+Show/Find Checkpoint
+== 显示/查找检查点
+
+Show current checkpoint in hud
+== 在 HUD 中显示当前检查点
+
+Compact Angle/Checkpoint
+== 紧凑角度/检查点
+
+Show angle and checkpoint oneline
+== 单行显示角度和检查点
+
+Player Join Sound
+== 玩家加入声音
+
+Play sound when player join
+== 玩家加入时播放声音
+
+Player names
+== 玩家名称
+
+Saved settings
+== 已保存设置
+
+Current settings
+== 当前设置
+
+Selected profile
+== 已选配置文件
+
+No profile selected
+== 未选择配置文件
+
+Config: Modified/Total
+== 配置：已修改/总计
+
+Include DDNet settings
+== 包含 DDNet 设置
+
+Include key binds
+== 包含按键绑定
+
+Include TClient settings
+== 包含 TClient 设置
+
+Include TClient bindwheel
+== 包含 TClient 绑定轮盘
+
+Include RClient settings
+== 包含 RClient 设置
+
+Selected
+== 已选
+
+Include RClient bindwheel
+== 包含 RClient 绑定轮盘
+
+Include warlist
+== 包含战争列表
+
+Include chat binds
+== 包含聊天绑定
+
+Include skin profiles
+== 包含皮肤配置文件
+
+Save New
+== 保存新配置
+
+Apply Selected
+== 应用已选配置
+
+Delete Selected
+== 删除已选配置
+
+Create or update
+== 创建或更新
+
+On server
+== 在服务器上
+
+Changed
+== 已更改
+
+Show locally muted players
+== 显示本地静音玩家
+
+Show locally muted in nameplates
+== 在名牌中显示本地静音
+
+Show locally muted in overlay
+== 在覆盖层中显示本地静音
