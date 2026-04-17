@@ -56,6 +56,46 @@ file(APPEND "${DATA_VERSION_FILE}" "RClient ${RCLIENT_VERSION_MAJOR}.${RCLIENT_V
 
 # </TClient>
 
+file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/src/generated/")
+set(RCLIENT_SECRET_TOKEN_DEFAULT "CHANGEME_IND_16B")
+set(RCLIENT_SECRET_TOKEN "$ENV{RCLIENT_SECRET_TOKEN}")
+if(RCLIENT_SECRET_TOKEN STREQUAL "")
+  set(RCLIENT_SECRET_TOKEN "${RCLIENT_SECRET_TOKEN_DEFAULT}")
+endif()
+set(RCLIENT_SECRET_TOKEN_SEED 167)
+set(RCLIENT_SECRET_TOKEN_STEP_A 29)
+set(RCLIENT_SECRET_TOKEN_STEP_B 17)
+set(RCLIENT_SECRET_TOKEN_SALT 93)
+if(CMAKE_VERSION VERSION_LESS 3.18)
+  file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles")
+  set(RCLIENT_SECRET_TOKEN_HEX_TMP "${PROJECT_BINARY_DIR}/CMakeFiles/rclient_secret_token.hex.tmp")
+  file(WRITE "${RCLIENT_SECRET_TOKEN_HEX_TMP}" "${RCLIENT_SECRET_TOKEN}")
+  file(READ "${RCLIENT_SECRET_TOKEN_HEX_TMP}" RCLIENT_SECRET_TOKEN_HEX HEX)
+  file(REMOVE "${RCLIENT_SECRET_TOKEN_HEX_TMP}")
+else()
+  string(HEX "${RCLIENT_SECRET_TOKEN}" RCLIENT_SECRET_TOKEN_HEX)
+endif()
+string(LENGTH "${RCLIENT_SECRET_TOKEN_HEX}" RCLIENT_SECRET_TOKEN_HEX_LENGTH)
+math(EXPR RCLIENT_SECRET_TOKEN_LENGTH "${RCLIENT_SECRET_TOKEN_HEX_LENGTH} / 2")
+set(RCLIENT_SECRET_TOKEN_OBFUSCATED_BYTES "")
+if(RCLIENT_SECRET_TOKEN_LENGTH GREATER 0)
+  math(EXPR RCLIENT_SECRET_TOKEN_LAST_INDEX "${RCLIENT_SECRET_TOKEN_LENGTH} - 1")
+  foreach(RCLIENT_SECRET_TOKEN_INDEX RANGE 0 ${RCLIENT_SECRET_TOKEN_LAST_INDEX})
+    math(EXPR RCLIENT_SECRET_TOKEN_HEX_OFFSET "${RCLIENT_SECRET_TOKEN_INDEX} * 2")
+    string(SUBSTRING "${RCLIENT_SECRET_TOKEN_HEX}" ${RCLIENT_SECRET_TOKEN_HEX_OFFSET} 2 RCLIENT_SECRET_TOKEN_HEX_BYTE)
+    math(EXPR RCLIENT_SECRET_TOKEN_BYTE_VALUE "0x${RCLIENT_SECRET_TOKEN_HEX_BYTE}")
+    math(EXPR RCLIENT_SECRET_TOKEN_MASK "((${RCLIENT_SECRET_TOKEN_SEED} + ((${RCLIENT_SECRET_TOKEN_INDEX} * ${RCLIENT_SECRET_TOKEN_STEP_A}) & 0xFF)) ^ ((((${RCLIENT_SECRET_TOKEN_INDEX} + 1) * ${RCLIENT_SECRET_TOKEN_STEP_B}) + ${RCLIENT_SECRET_TOKEN_SALT}) & 0xFF)) & 0xFF")
+    math(EXPR RCLIENT_SECRET_TOKEN_OBFUSCATED_BYTE "(${RCLIENT_SECRET_TOKEN_BYTE_VALUE} ^ ${RCLIENT_SECRET_TOKEN_MASK}) & 0xFF")
+    if(RCLIENT_SECRET_TOKEN_INDEX GREATER 0)
+      string(APPEND RCLIENT_SECRET_TOKEN_OBFUSCATED_BYTES ", ")
+    endif()
+    string(APPEND RCLIENT_SECRET_TOKEN_OBFUSCATED_BYTES "${RCLIENT_SECRET_TOKEN_OBFUSCATED_BYTE}")
+  endforeach()
+else()
+  set(RCLIENT_SECRET_TOKEN_OBFUSCATED_BYTES "0")
+endif()
+configure_file(cmake/rclient_secret_token.h.in "${PROJECT_BINARY_DIR}/src/generated/rclient_secret_token.h" @ONLY)
+
 set(ORIGINAL_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
 set(ORIGINAL_CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES})
 set(ORIGINAL_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
@@ -544,6 +584,13 @@ if(CLIENT AND VIDEORECORDER)
   find_package(FFMPEG)
 endif()
 find_package(Freetype)
+if(TARGET_OS STREQUAL "linux" AND CLIENT)
+  find_package(Gio)
+else()
+  set(GIO_FOUND OFF)
+  set(GIO_LIBRARIES)
+  set(GIO_INCLUDE_DIRS)
+endif()
 if(DOWNLOAD_GTEST)
   find_package(Git)
 endif()
@@ -792,8 +839,8 @@ elseif(TARGET_OS STREQUAL "emscripten")
 else()
   find_package(Notify)
   find_package(OpenGL)
-  set(PLATFORM_CLIENT_LIBS ${OPENGL_gl_LIBRARY} ${NOTIFY_LIBRARIES})
-  set(PLATFORM_CLIENT_INCLUDE_DIRS ${OPENGL_INCLUDE_DIR} ${NOTIFY_INCLUDE_DIRS})
+  set(PLATFORM_CLIENT_LIBS ${OPENGL_gl_LIBRARY} ${NOTIFY_LIBRARIES} ${GIO_LIBRARIES})
+  set(PLATFORM_CLIENT_INCLUDE_DIRS ${OPENGL_INCLUDE_DIR} ${NOTIFY_INCLUDE_DIRS} ${GIO_INCLUDE_DIRS})
   set(PLATFORM_CLIENT)
   if(TARGET_OS STREQUAL "linux")
     set(PLATFORM_LIBS)
@@ -1675,6 +1722,7 @@ set(EXPECTED_DATA
   rclient/rclient_big_logo.png
   rclient/rclient_icon.png
   rclient/rclient_icon_red.png
+  rclient/rclient_icon_white.png
   rclient/riactions.png
   rclient/rihammer.png
   rclient/rihook.png
@@ -2638,12 +2686,18 @@ if(CLIENT)
     components/rclient/menu/menus_start_rclient.cpp
     components/rclient/menu/menus_start_rclient.h
     components/rclient/menus_rclient.cpp
+    components/rclient/menus_rclient_clickgui.cpp
+    components/rclient/menus_rclient_clickgui.h
+    components/rclient/music_island.cpp
+    components/rclient/music_island.h
     components/rclient/playermenu.cpp
     components/rclient/playermenu.h
     components/rclient/rclient.cpp
     components/rclient/rclient.h
     components/rclient/rclient_indicator.cpp
     components/rclient/rclient_indicator.h
+    components/rclient/settingsprofiles.cpp
+    components/rclient/settingsprofiles.h
     components/rclient/voice.cpp
     components/rclient/voice.h
     components/mclient/mclient.cpp
@@ -2955,6 +3009,10 @@ if(CLIENT)
   )
 
   target_link_libraries(game-client ${LIBS_CLIENT})
+
+  if(TARGET_OS STREQUAL "linux" AND GIO_FOUND)
+    target_compile_definitions(game-client PRIVATE CONF_MUSIC_ISLAND_MPRIS)
+  endif()
 
   if(MSVC)
     target_compile_options(game-client PRIVATE /bigobj) # TClient, required for ChaiScript

@@ -15,6 +15,7 @@ class CRClient : public CComponent
 	static void ConFindPlayerFromDdstats(IConsole::IResult *pResult, void *pUserData);
 	static void ConFindSkinFromDdstats(IConsole::IResult *pResult, void *pUserData);
 	static void ConCopySkinFromDdstats(IConsole::IResult *pResult, void *pUserData);
+	static void ConLaunchSecondClient(IConsole::IResult *pResult, void *pUserData);
 	static void ConBackupPlayerProfile(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConSpectatorAddTracker(IConsole::IResult *pResult, void *pUserData);
@@ -145,13 +146,13 @@ class CRClient : public CComponent
 	class IEngineGraphics *m_pGraphics = nullptr;
 	bool m_SoundPlayed = false;
 
-
 public:
 
 	CRClient();
 	int Sizeof() const override { return sizeof(*this); }
 	void OnInit() override;
 	void OnConsoleInit() override;
+	void OnMessage(int MsgType, void *pRawMsg) override;
 	void OnRender() override;
 	void OnShutdown() override;
 
@@ -209,6 +210,9 @@ public:
 	int VoiceNameVolume(const char *pName, int DefaultPercent = 100) const;
 	void VoiceNameVolumeSet(const char *pName, int Percent);
 	void VoiceNameVolumeClear(const char *pName);
+
+	//Checkpoint
+	int GetCheckpointId();
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include <base/log.h>
+#include <base/process.h>
 #include <base/str.h>
 
 #include <cctype>
@@ -16,6 +17,35 @@
 #include <engine/shared/json.h>
 
 #include "rclient.h"
+
+static bool ExtractJoinedPlayerName(const char *pLine, char *pName, int NameSize)
+{
+	static constexpr const char *pJoinSuffix = "' entered and joined the game";
+
+	if(!pLine || pLine[0] != '\'')
+		return false;
+
+	const char *pSuffixStart = str_endswith(pLine, pJoinSuffix);
+	if(!pSuffixStart)
+		return false;
+
+	const char *pNameStart = pLine + 1;
+	if(pSuffixStart <= pNameStart)
+		return false;
+
+	str_truncate(pName, NameSize, pNameStart, (int)(pSuffixStart - pNameStart));
+	return pName[0] != '\0';
+}
+
+static bool ShouldPlayJoinSound(const char *pLine)
+{
+	if(!g_Config.m_RiJoinSoundNames[0])
+		return false;
+
+	char aJoinedName[MAX_NAME_LENGTH];
+	return ExtractJoinedPlayerName(pLine, aJoinedName, sizeof(aJoinedName)) &&
+		CRClient::VoiceListHasName(g_Config.m_RiJoinSoundNames, aJoinedName);
+}
 
 CRClient::CRClient()
 {
@@ -44,6 +74,7 @@ void CRClient::OnConsoleInit()
 	Console()->Register("ri_find_player_from_ddstats", "s[type]", CFGFLAG_CLIENT, ConFindPlayerFromDdstats, this, "Fetch player from DDstats");
 	Console()->Register("ri_find_skin_from_ddstats", "s[type]", CFGFLAG_CLIENT, ConFindSkinFromDdstats, this, "Fetch player's skin from DDstats");
 	Console()->Register("ri_copy_skin_from_ddstats", "s[type]", CFGFLAG_CLIENT, ConCopySkinFromDdstats, this, "Fetch and copy player's skin from DDstats");
+	Console()->Register("ri_launch_second_client", "", CFGFLAG_CLIENT | CFGFLAG_STORE, ConLaunchSecondClient, this, "Launch a second client window");
 	Console()->Register("ri_backup_player_profile", "", CFGFLAG_CLIENT, ConBackupPlayerProfile, this, "Backup player profile");
 	Console()->Register("ri_tracker_spectator", "", CFGFLAG_CLIENT, ConSpectatorAddTracker, this, "Backup player profile");
 	Console()->Register("ri_find_time_on_map", "s[nickname] s[map] ?s[map1] ?s[map2] ?s[map3] ?s[map4] ?s[map5]", CFGFLAG_CLIENT, ConFindTimeMap, this, "Search time on map. Example: ri_find_time_on_map \"[D] Voix\" Grandma");
@@ -97,6 +128,38 @@ void CRClient::OnConsoleInit()
 			pfnCallback(pResult, pCallbackUserData);
 		},
 		this);
+}
+
+void CRClient::ConLaunchSecondClient(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = (CRClient *)pUserData;
+#if !defined(CONF_PLATFORM_ANDROID)
+	char aClientBinaryPath[IO_MAX_PATH_LENGTH];
+	pSelf->Storage()->GetBinaryPathAbsolute(PLAT_CLIENT_EXEC, aClientBinaryPath, sizeof(aClientBinaryPath));
+	const PROCESS Process = process_execute(aClientBinaryPath, EShellExecuteWindowState::FOREGROUND);
+	if(Process == INVALID_PROCESS)
+	{
+		log_error("rclient", "failed to launch second client from '%s'", aClientBinaryPath);
+		pSelf->GameClient()->Echo(Localize("Failed to launch second client. See local console for details."));
+		return;
+	}
+#else
+	log_warn("rclient", "launch_client is not supported on Android");
+	pSelf->GameClient()->Echo(Localize("Launching a second client is not supported on Android."));
+#endif
+}
+
+void CRClient::OnMessage(int MsgType, void *pRawMsg)
+{
+	if(GameClient()->m_SuppressEvents)
+		return;
+
+	if(MsgType == NETMSGTYPE_SV_CHAT)
+	{
+		const CNetMsg_Sv_Chat *pMsg = (const CNetMsg_Sv_Chat *)pRawMsg;
+		if(g_Config.m_RiJoinSoundEnable && pMsg->m_ClientId == -1 && ShouldPlayJoinSound(pMsg->m_pMessage))
+			GameClient()->m_Sounds.Play(CSounds::CHN_GUI, SOUND_CHAT_HIGHLIGHT, 1.0f);
+	}
 }
 
 void CRClient::OnRender()
@@ -1021,20 +1084,38 @@ void CRClient::ConAddWhiteList(IConsole::IResult *pResult, void *pUserData)
 	char aBuf[256];
 	if(aInput[0])
 	{
-		if(g_Config.m_RiRegexPlayerWhitelist[0])
+		const bool HadExistingRegex = g_Config.m_RiRegexPlayerWhitelist[0] != '\0';
+		char aOldRegex[sizeof(g_Config.m_RiRegexPlayerWhitelist)];
+		str_copy(aOldRegex, g_Config.m_RiRegexPlayerWhitelist, sizeof(aOldRegex));
+		const char *pNewRegex = aInput;
+		char aNewRegex[sizeof(g_Config.m_RiRegexPlayerWhitelist)];
+		if(HadExistingRegex)
 		{
-			char aNewRegex[512];
-			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 			str_format(aNewRegex, sizeof(aNewRegex), "%s|%s", g_Config.m_RiRegexPlayerWhitelist, aInput);
-			str_copy(g_Config.m_RiRegexPlayerWhitelist, aNewRegex, sizeof(g_Config.m_RiRegexPlayerWhitelist));
+			pNewRegex = aNewRegex;
+		}
+
+		str_copy(g_Config.m_RiRegexPlayerWhitelist, pNewRegex, sizeof(g_Config.m_RiRegexPlayerWhitelist));
+
+		auto Re = Regex(g_Config.m_RiRegexPlayerWhitelist);
+		if(!Re.error().empty())
+		{
+			str_copy(g_Config.m_RiRegexPlayerWhitelist, aOldRegex, sizeof(g_Config.m_RiRegexPlayerWhitelist));
+			str_format(aBuf, sizeof(aBuf), "Invalid regex, list not updated: %s", Re.error().c_str());
 			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			return;
+		}
+
+		pSelf->m_RegexSplitPlayer = std::move(Re);
+		if(!HadExistingRegex)
+		{
+			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
 		}
 		else
 		{
-			str_copy(g_Config.m_RiRegexPlayerWhitelist, aInput, sizeof(g_Config.m_RiRegexPlayerWhitelist));
-			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 		}
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
 	}
 	else
 	{
@@ -1408,6 +1489,28 @@ void CRClient::ConGetCheckpointId(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
+int CRClient::GetCheckpointId()
+{
+	int PlayerId = -1;
+	if(GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW && GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_SpecInfo.m_SpectatorId];
+		PlayerId = Player.ClientId();
+	}
+	else if(!GameClient()->m_Snap.m_SpecInfo.m_Active)
+		PlayerId = GameClient()->m_Snap.m_LocalClientId;
+
+	if(PlayerId != -1)
+	{
+		const auto &Char = GameClient()->m_Snap.m_aCharacters[PlayerId];
+		if(!Char.m_Active || !Char.m_HasExtendedData)
+			return -1;
+		return Char.m_ExtendedData.m_TeleCheckpoint;
+	}
+
+	return -1;
+}
+
 void CRClient::TargetPlayerPosAdd(const char *Nickname)
 {
 	int ClientID = -1;
@@ -1586,20 +1689,40 @@ void CRClient::ConAddCensorList(IConsole::IResult *pResult, void *pUserData)
 	char aBuf[256];
 	if(aInput[0])
 	{
-		if(g_Config.m_TcRegexChatIgnore[0])
+		const bool HadExistingRegex = g_Config.m_TcRegexChatIgnore[0] != '\0';
+		char aOldRegex[sizeof(g_Config.m_TcRegexChatIgnore)];
+		str_copy(aOldRegex, g_Config.m_TcRegexChatIgnore, sizeof(aOldRegex));
+		const char *pNewRegex = aInput;
+		char aNewRegex[sizeof(g_Config.m_TcRegexChatIgnore)];
+		if(HadExistingRegex)
 		{
-			char aNewRegex[1024];
-			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 			str_format(aNewRegex, sizeof(aNewRegex), "%s|%s", g_Config.m_TcRegexChatIgnore, aInput);
-			str_copy(g_Config.m_TcRegexChatIgnore, aNewRegex, sizeof(g_Config.m_TcRegexChatIgnore));
+			pNewRegex = aNewRegex;
+		}
+
+		str_copy(g_Config.m_TcRegexChatIgnore, pNewRegex, sizeof(g_Config.m_TcRegexChatIgnore));
+
+		char aLowerRegex[sizeof(g_Config.m_TcRegexChatIgnore)];
+		str_utf8_tolower(g_Config.m_TcRegexChatIgnore, aLowerRegex, sizeof(aLowerRegex));
+		auto Re = Regex(aLowerRegex, true);
+		if(!Re.error().empty())
+		{
+			str_copy(g_Config.m_TcRegexChatIgnore, aOldRegex, sizeof(g_Config.m_TcRegexChatIgnore));
+			str_format(aBuf, sizeof(aBuf), "Invalid regex, list not updated: %s", Re.error().c_str());
 			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			return;
+		}
+
+		pSelf->GameClient()->m_TClient.m_RegexChatIgnore = std::move(Re);
+		if(!HadExistingRegex)
+		{
+			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
 		}
 		else
 		{
-			str_copy(g_Config.m_TcRegexChatIgnore, aInput, sizeof(g_Config.m_TcRegexChatIgnore));
-			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 		}
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
 	}
 	else
 	{

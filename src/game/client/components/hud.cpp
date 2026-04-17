@@ -27,12 +27,30 @@
 
 #include <cmath>
 
+enum EVoiceDisplayState
+{
+	VOICE_DISPLAY_NONE = 0,
+	VOICE_DISPLAY_REMOTE_MUTED,
+	VOICE_DISPLAY_LOCAL_MUTED,
+};
+
+static ColorRGBA VoiceDisplayColor(int State)
+{
+	if(State == VOICE_DISPLAY_LOCAL_MUTED)
+		return ColorRGBA(1.0f, 0.22f, 0.22f, 1.0f);
+	if(State == VOICE_DISPLAY_REMOTE_MUTED)
+		return ColorRGBA(1.0f, 0.55f, 0.0f, 1.0f);
+	return ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
 CHud::CHud()
 {
 	m_FPSTextContainerIndex.Reset();
 	m_DDRaceEffectsTextContainerIndex.Reset();
 	m_PlayerAngleTextContainerIndex.Reset();
+	m_PlayerCheckpointTextContainerIndex.Reset();
 	m_PlayerPrevAngle = -INFINITY;
+	m_PlayerPrevCheckpoint = -1;
 
 	for(int i = 0; i < 2; i++)
 	{
@@ -62,7 +80,9 @@ void CHud::ResetHudContainers()
 	TextRender()->DeleteTextContainer(m_FPSTextContainerIndex);
 	TextRender()->DeleteTextContainer(m_DDRaceEffectsTextContainerIndex);
 	TextRender()->DeleteTextContainer(m_PlayerAngleTextContainerIndex);
+	TextRender()->DeleteTextContainer(m_PlayerCheckpointTextContainerIndex);
 	m_PlayerPrevAngle = -INFINITY;
+	m_PlayerPrevCheckpoint = -1;
 	for(int i = 0; i < 2; i++)
 	{
 		TextRender()->DeleteTextContainer(m_aPlayerSpeedTextContainers[i]);
@@ -1545,7 +1565,7 @@ void CHud::RenderSpectatorCount()
 
 	float StartX = m_Width - BoxWidth;
 	float StartY = 285.0f - BoxHeight - 4; // 4 units distance to the next display;
-	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle)
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || g_Config.m_RiShowCheckpointInHud || GameClient()->m_RClient.TargetCount || g_Config.m_RiShowhudDummyPosition)
 	{
 		StartY -= 4;
 	}
@@ -1584,7 +1604,7 @@ void CHud::RenderDummyActions()
 
 	float StartX = m_Width - BoxWidth;
 	float StartY = 285.0f - BoxHeight - 4; // 4 units distance to the next display;
-	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle)
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || g_Config.m_RiShowCheckpointInHud)
 	{
 		StartY -= 4;
 	}
@@ -1655,10 +1675,14 @@ inline int CHud::GetDigitsIndex(int Value, int Max)
 
 inline float CHud::GetMovementInformationBoxHeight()
 {
+	float TargetCountLines = GameClient()->m_RClient.TargetCount * 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT;
+	float DummyPosLines = g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT : 0.0f;
+	float CheckpointHudLines = g_Config.m_RiShowCheckpointInHud * MOVEMENT_INFORMATION_LINE_HEIGHT * (!g_Config.m_RiHudOneLine ? 2.0f : 1.0f);
+	float AngleHudLines = g_Config.m_ClShowhudPlayerAngle * MOVEMENT_INFORMATION_LINE_HEIGHT * (!g_Config.m_RiHudOneLine ? 2.0f : 1.0f);
 	if(GameClient()->m_Snap.m_SpecInfo.m_Active && (GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == SPEC_FREEVIEW || GameClient()->m_aClients[GameClient()->m_Snap.m_SpecInfo.m_SpectatorId].m_SpecCharPresent))
-		return (g_Config.m_ClShowhudPlayerPosition ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + (GameClient()->m_RClient.TargetCount ? GameClient()->m_RClient.TargetCount * 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + (g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f);
-	float BoxHeight = 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * (g_Config.m_ClShowhudPlayerPosition + g_Config.m_ClShowhudPlayerSpeed + GameClient()->m_RClient.TargetCount + (g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 1.0f : 0.0f)) + 2.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * g_Config.m_ClShowhudPlayerAngle;
-	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle)
+		return (g_Config.m_ClShowhudPlayerPosition ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + TargetCountLines + DummyPosLines + CheckpointHudLines;
+	float BoxHeight = 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * (g_Config.m_ClShowhudPlayerPosition + g_Config.m_ClShowhudPlayerSpeed) + AngleHudLines + TargetCountLines + DummyPosLines + CheckpointHudLines;
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || g_Config.m_RiShowCheckpointInHud || GameClient()->m_RClient.TargetCount || g_Config.m_RiShowhudDummyPosition)
 	{
 		BoxHeight += 2.0f;
 	}
@@ -1674,6 +1698,20 @@ void CHud::UpdateMovementInformationTextContainer(STextContainerIndex &TextConta
 
 	char aBuf[128];
 	str_format(aBuf, sizeof(aBuf), "%.2f", Value);
+
+	CTextCursor Cursor;
+	Cursor.m_FontSize = FontSize;
+	TextRender()->RecreateTextContainer(TextContainer, &Cursor, aBuf);
+}
+
+void CHud::UpdateMovementInformationTextContainer(STextContainerIndex &TextContainer, float FontSize, int Value, int &PrevValue)
+{
+	if(TextContainer.Valid() && PrevValue == Value)
+		return;
+	PrevValue = Value;
+
+	char aBuf[32];
+	str_format(aBuf, sizeof(aBuf), "%d", Value);
 
 	CTextCursor Cursor;
 	Cursor.m_FontSize = FontSize;
@@ -1745,7 +1783,7 @@ void CHud::RenderMovementInformation()
 	const bool PosOnly = ClientId == SPEC_FREEVIEW || (GameClient()->m_aClients[ClientId].m_SpecCharPresent);
 	// Draw the information depending on settings: Position, speed and target angle
 	// This display is only to present the available information from the last snapshot, not to interpolate or predict
-	if(!g_Config.m_ClShowhudPlayerPosition && (PosOnly || (!g_Config.m_ClShowhudPlayerSpeed && !g_Config.m_ClShowhudPlayerAngle)) && !(GameClient()->m_RClient.TargetCount) && !(g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected()))
+	if(!g_Config.m_ClShowhudPlayerPosition && (PosOnly || (!g_Config.m_ClShowhudPlayerSpeed && !g_Config.m_ClShowhudPlayerAngle)) && !g_Config.m_RiShowCheckpointInHud && !(GameClient()->m_RClient.TargetCount) && !(g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected()))
 	{
 		return;
 	}
@@ -1898,38 +1936,60 @@ void CHud::RenderMovementInformation()
 		}
 	}
 
-	if(PosOnly)
-		return;
-
-	if(g_Config.m_ClShowhudPlayerSpeed)
+	if(!PosOnly)
 	{
-		TextRender()->Text(LeftX, y, Fontsize, Localize("Speed:"), -1.0f);
-		y += MOVEMENT_INFORMATION_LINE_HEIGHT;
-
-		const char aaCoordinates[][4] = {"X:", "Y:"};
-		for(int i = 0; i < 2; i++)
+		if(g_Config.m_ClShowhudPlayerSpeed)
 		{
-			ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
-			if(m_aLastPlayerSpeedChange[i] == ESpeedChange::INCREASE)
-				Color = ColorRGBA(0.0f, 1.0f, 0.0f, 1.0f);
-			if(m_aLastPlayerSpeedChange[i] == ESpeedChange::DECREASE)
-				Color = ColorRGBA(1.0f, 0.5f, 0.5f, 1.0f);
-			TextRender()->Text(LeftX, y, Fontsize, aaCoordinates[i], -1.0f);
-			UpdateMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Fontsize, i == 0 ? Info.m_Speed.x : Info.m_Speed.y, m_aPlayerPrevSpeed[i]);
-			RenderMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Color, RightX, y);
+			TextRender()->Text(LeftX, y, Fontsize, Localize("Speed:"), -1.0f);
 			y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+
+			const char aaCoordinates[][4] = {"X:", "Y:"};
+			for(int i = 0; i < 2; i++)
+			{
+				ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
+				if(m_aLastPlayerSpeedChange[i] == ESpeedChange::INCREASE)
+					Color = ColorRGBA(0.0f, 1.0f, 0.0f, 1.0f);
+				if(m_aLastPlayerSpeedChange[i] == ESpeedChange::DECREASE)
+					Color = ColorRGBA(1.0f, 0.5f, 0.5f, 1.0f);
+				TextRender()->Text(LeftX, y, Fontsize, aaCoordinates[i], -1.0f);
+				UpdateMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Fontsize, i == 0 ? Info.m_Speed.x : Info.m_Speed.y, m_aPlayerPrevSpeed[i]);
+				RenderMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Color, RightX, y);
+				y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+			}
+
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 		}
 
-		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		if(g_Config.m_ClShowhudPlayerAngle)
+		{
+			TextRender()->Text(LeftX, y, Fontsize, Localize("Angle:"), -1.0f);
+
+			if(!g_Config.m_RiHudOneLine)
+				y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+
+			UpdateMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, Fontsize, Info.m_Angle, m_PlayerPrevAngle);
+			RenderMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, TextRender()->DefaultTextColor(), RightX, y);
+			y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+		}
 	}
 
-	if(g_Config.m_ClShowhudPlayerAngle)
+	if(g_Config.m_RiShowCheckpointInHud)
 	{
-		TextRender()->Text(LeftX, y, Fontsize, Localize("Angle:"), -1.0f);
-		y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+		const int CheckpointId = GameClient()->m_RClient.GetCheckpointId();
+		TextRender()->Text(LeftX, y, Fontsize, Localize("Checkpoint:"), -1.0f);
 
-		UpdateMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, Fontsize, Info.m_Angle, m_PlayerPrevAngle);
-		RenderMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, TextRender()->DefaultTextColor(), RightX, y);
+		if(!g_Config.m_RiHudOneLine)
+			y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+
+		if(CheckpointId < 0)
+		{
+			TextRender()->Text(RightX - TextRender()->TextWidth(Fontsize, "No Info", -1, -1.0f), y, Fontsize, "No Info", -1.0f);
+		}
+		else
+		{
+			UpdateMovementInformationTextContainer(m_PlayerCheckpointTextContainerIndex, Fontsize, CheckpointId, m_PlayerPrevCheckpoint);
+			RenderMovementInformationTextContainer(m_PlayerCheckpointTextContainerIndex, TextRender()->DefaultTextColor(), RightX, y);
+		}
 	}
 }
 
@@ -2011,10 +2071,11 @@ void CHud::RenderVoiceIndicator()
 	if(!g_Config.m_RiVoiceEnable)
 		return;
 
+	const bool ShowMuted = g_Config.m_RiVoiceMicMute && g_Config.m_RiVoiceShowMutedIndicator;
 	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
 	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
 		return;
-	if(!GameClient()->m_RClient.IsVoiceActive(LocalId))
+	if(!GameClient()->m_RClient.IsVoiceActive(LocalId) && !ShowMuted)
 		return;
 
 	const float FontSize = 6.0f;
@@ -2024,11 +2085,17 @@ void CHud::RenderVoiceIndicator()
 	const float X = 5.0f;
 	const float Y = m_Height - BoxHeight - 10.0f;
 	const float TextY = Y + (BoxHeight - FontSize) / 2.0f;
+	const ColorRGBA VoiceColor = ShowMuted ? ColorRGBA(1.0f, 0.22f, 0.22f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 
 	Graphics()->DrawRect(X, Y, BoxWidth, BoxHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_ALL, 3.0f);
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+	TextRender()->TextColor(VoiceColor);
 	TextRender()->Text(X + Padding, TextY, FontSize, FontIcon::RC_MICROPHONE, -1.0f);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+
+	if(ShowMuted)
+		return;
 
 	if(g_Config.m_RiVoiceShowPing)
 	{
@@ -2063,16 +2130,24 @@ void CHud::RenderVoiceSpeakerOverlay()
 		return;
 
 	int aSpeakerIds[MAX_CLIENTS];
+	int aSpeakerVoiceState[MAX_CLIENTS];
 	int SpeakerCount = 0;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(i == LocalId && !g_Config.m_RiVoiceIndicatorAboveSelf)
 			continue;
-		if(!GameClient()->m_RClient.IsVoiceActive(i))
+		const bool VoiceActive = GameClient()->m_RClient.IsVoiceActive(i);
+		int VoiceState = VOICE_DISPLAY_NONE;
+		if(g_Config.m_RiVoiceShowLocalMuted && g_Config.m_RiVoiceShowLocalMutedOverlay && GameClient()->m_RClient.VoiceListHasName(g_Config.m_RiVoiceMute, GameClient()->m_aClients[i].m_aName))
+			VoiceState = VOICE_DISPLAY_LOCAL_MUTED;
+		else if(g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedOverlay && GameClient()->m_RClientIndicator.IsPlayerRClientVoiceMuted(i))
+			VoiceState = VOICE_DISPLAY_REMOTE_MUTED;
+		if(!VoiceActive && VoiceState == VOICE_DISPLAY_NONE)
 			continue;
 		if(GameClient()->m_aClients[i].m_aName[0] == '\0')
 			continue;
 		aSpeakerIds[SpeakerCount++] = i;
+		aSpeakerVoiceState[SpeakerCount - 1] = VoiceState;
 	}
 	if(SpeakerCount == 0)
 		return;
@@ -2092,7 +2167,9 @@ void CHud::RenderVoiceSpeakerOverlay()
 	for(int Index = 0; Index < SpeakerCount; Index++)
 	{
 		const int ClientId = aSpeakerIds[Index];
+		const int VoiceState = aSpeakerVoiceState[Index];
 		const char *pName = GameClient()->m_aClients[ClientId].m_aName;
+		const ColorRGBA VoiceColor = VoiceDisplayColor(VoiceState);
 
 		const float NameWidth = TextRender()->TextWidth(FontSize, pName);
 		const float RowWidth = Padding * 2.0f + IconWidth + Gap + NameWidth;
@@ -2100,8 +2177,10 @@ void CHud::RenderVoiceSpeakerOverlay()
 		Graphics()->DrawRect(X, Y, RowWidth, RowHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_R, 3.0f);
 
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->TextColor(VoiceColor);
 		TextRender()->Text(X + Padding, Y + TextYOff, FontSize, FontIcon::RC_MICROPHONE, -1.0f);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
 		TextRender()->Text(X + Padding + IconWidth + Gap, Y + TextYOff, FontSize, pName, -1.0f);
 
 		Y += RowHeight;
@@ -2205,7 +2284,7 @@ void CHud::OnRender()
 			RenderSpectatorHud();
 		}
 
-		if(g_Config.m_ClShowhudTimer)
+		if(g_Config.m_ClShowhudTimer && !GameClient()->m_MusicIsland.IsActive())
 			RenderGameTimer();
 		RenderPauseNotification();
 		RenderSuddenDeath();
@@ -2225,6 +2304,7 @@ void CHud::OnRender()
 		if(g_Config.m_ClShowRecord)
 			RenderRecord();
 	}
+	GameClient()->m_MusicIsland.RenderHud();
 	RenderCursor();
 }
 

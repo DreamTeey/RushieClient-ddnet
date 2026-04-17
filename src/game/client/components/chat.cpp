@@ -30,6 +30,87 @@
 
 char CChat::ms_aDisplayText[MAX_LINE_LENGTH] = "";
 
+static vec2 UiMouseToScreen(const CUIRect *pUiScreen, vec2 UiMousePos, float Width, float Height)
+{
+	return vec2(
+		(UiMousePos.x - pUiScreen->x) * Width / pUiScreen->w,
+		(UiMousePos.y - pUiScreen->y) * Height / pUiScreen->h);
+}
+
+static bool IsChatCommandPrefix(char Prefix)
+{
+	return Prefix == '/' || Prefix == '.';
+}
+
+static int TransliterateCommandCodepoint(int Codepoint)
+{
+	switch(str_utf8_tolower_codepoint(Codepoint))
+	{
+	case 0x0451: return '`';  // ё
+	case 0x0439: return 'q';  // й
+	case 0x0446: return 'w';  // ц
+	case 0x0443: return 'e';  // у
+	case 0x043a: return 'r';  // к
+	case 0x0435: return 't';  // е
+	case 0x043d: return 'y';  // н
+	case 0x0433: return 'u';  // г
+	case 0x0448: return 'i';  // ш
+	case 0x0449: return 'o';  // щ
+	case 0x0437: return 'p';  // з
+	case 0x0445: return '[';  // х
+	case 0x044a: return ']';  // ъ
+	case 0x0444: return 'a';  // ф
+	case 0x044b: return 's';  // ы
+	case 0x0432: return 'd';  // в
+	case 0x0430: return 'f';  // а
+	case 0x043f: return 'g';  // п
+	case 0x0440: return 'h';  // р
+	case 0x043e: return 'j';  // о
+	case 0x043b: return 'k';  // л
+	case 0x0434: return 'l';  // д
+	case 0x0436: return ';';  // ж
+	case 0x044d: return '\''; // э
+	case 0x044f: return 'z';  // я
+	case 0x0447: return 'x';  // ч
+	case 0x0441: return 'c';  // с
+	case 0x043c: return 'v';  // м
+	case 0x0438: return 'b';  // и
+	case 0x0442: return 'n';  // т
+	case 0x044c: return 'm';  // ь
+	case 0x0431: return ',';  // б
+	case 0x044e: return '.';  // ю
+	default: return 0;
+	}
+}
+
+static void TransliterateCommand(const char *pCommand, char *pBuf, size_t BufSize)
+{
+	if(BufSize == 0)
+		return;
+
+	char *pDst = pBuf;
+	char *pDstEnd = pBuf + BufSize - 1;
+	const char *pSrc = pCommand;
+
+	while(*pSrc != '\0' && pDst < pDstEnd)
+	{
+		const char *pCodepointStart = pSrc;
+		const int Codepoint = str_utf8_decode(&pSrc);
+		const int Transliterated = TransliterateCommandCodepoint(Codepoint);
+
+		if(Transliterated != 0)
+		{
+			*pDst++ = (char)Transliterated;
+			continue;
+		}
+
+		while(pCodepointStart != pSrc && pDst < pDstEnd)
+			*pDst++ = *pCodepointStart++;
+	}
+
+	*pDst = '\0';
+}
+
 CChat::CLine::CLine()
 {
 	m_TextContainerIndex.Reset();
@@ -48,6 +129,11 @@ void CChat::CLine::Reset(CChat &This)
 	m_TimesRepeated = 0;
 	m_pManagedTeeRenderInfo = nullptr;
 	m_pTranslateResponse = nullptr;
+
+	//RClient chat utils
+	m_BackgroundWidth = 0.0f;
+	m_UnixTimestamp = 0;
+	m_Serial = 0;
 }
 
 CChat::CChat()
@@ -123,11 +209,36 @@ void CChat::ClearLines()
 		Line.Reset(*this);
 	m_PrevScoreBoardShowed = false;
 	m_PrevShowChat = false;
+
+	//RClient chat utils
+	m_CurrentLine = 0;
+	m_NumLines = 0;
 }
 
 void CChat::OnWindowResize()
 {
 	RebuildChat();
+}
+
+void CChat::SetUiMousePos(vec2 Pos)
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+	Pos = Pos / vec2(pScreen->w, pScreen->h) * WindowSize;
+	Ui()->OnCursorMove(Pos.x - UpdatedMousePos.x, Pos.y - UpdatedMousePos.y);
+}
+
+vec2 CChat::MouseCursorPos() const
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+
+	return vec2(
+		pScreen->x + UpdatedMousePos.x * pScreen->w / WindowSize.x,
+		pScreen->y + UpdatedMousePos.y * pScreen->h / WindowSize.y);
 }
 
 void CChat::Reset()
@@ -150,10 +261,19 @@ void CChat::Reset()
 	m_ServerCommandsNeedSorting = false;
 	m_aCurrentInputText[0] = '\0';
 	DisableMode();
+	m_HasLastMousePos = false;
 	m_vServerCommands.clear();
 
 	for(int64_t &LastSoundPlayed : m_aLastSoundPlayed)
 		LastSoundPlayed = 0;
+
+	//Rclient Chat Utils
+	m_NumLines = 0;
+	m_NextLineSerial = 0;
+	m_LastCursorLeftPressed = false;
+	m_MessageScrollOffset = 0;
+	m_ScrollbarDragging = false;
+	m_ScrollbarDragOffset = 0.0f;
 }
 
 void CChat::OnRelease()
@@ -256,8 +376,32 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 	if(m_Mode == MODE_NONE)
 		return false;
 
+	if((Event.m_Flags & IInput::FLAG_PRESS) != 0 &&
+		HasMouseCursor() &&
+		g_Config.m_RiChatScrollbar &&
+		!Ui()->IsPopupOpen(&m_LinePopupContext))
+	{
+		if(Event.m_Key == KEY_MOUSE_WHEEL_UP)
+		{
+			++m_MessageScrollOffset;
+			return true;
+		}
+		if(Event.m_Key == KEY_MOUSE_WHEEL_DOWN)
+		{
+			m_MessageScrollOffset = maximum(0, m_MessageScrollOffset - 1);
+			return true;
+		}
+	}
+
 	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
 	{
+		//RClient chat utils
+		if(Ui()->IsPopupOpen(&m_LinePopupContext))
+		{
+			Ui()->ClosePopupMenu(&m_LinePopupContext);
+			return true;
+		}
+
 		DisableMode();
 		GameClient()->OnRelease();
 		if(g_Config.m_ClChatReset)
@@ -303,7 +447,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			str_truncate(m_aCompletionBuffer, sizeof(m_aCompletionBuffer), m_Input.GetString() + m_PlaceholderOffset, m_PlaceholderLength);
 		}
 
-		if(!m_CompletionUsed && m_aCompletionBuffer[0] != '/')
+		if(!m_CompletionUsed && !IsChatCommandPrefix(m_aCompletionBuffer[0]))
 		{
 			// Create the completion list of player names through which the player can iterate
 			const char *PlayerName, *FoundInput;
@@ -332,9 +476,11 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 		if(GameClient()->m_BindChat.ChatDoAutocomplete(ShiftPressed))
 		{
 		}
-		else if(m_aCompletionBuffer[0] == '/' && !m_vServerCommands.empty())
+		else if(IsChatCommandPrefix(m_aCompletionBuffer[0]) && !m_vServerCommands.empty())
 		{
 			CCommand *pCompletionCommand = nullptr;
+			char aCommandStart[MAX_LINE_LENGTH];
+			TransliterateCommand(m_aCompletionBuffer + 1, aCommandStart, sizeof(aCommandStart));
 
 			const size_t NumCommands = m_vServerCommands.size();
 
@@ -346,7 +492,6 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 			m_CompletionUsed = true;
 
-			const char *pCommandStart = m_aCompletionBuffer + 1;
 			for(size_t i = 0; i < 2 * NumCommands; ++i)
 			{
 				int SearchType;
@@ -365,7 +510,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 				auto &Command = m_vServerCommands[Index];
 
-				if(str_startswith_nocase(Command.m_aName, pCommandStart))
+				if(str_startswith_nocase(Command.m_aName, aCommandStart))
 				{
 					pCompletionCommand = &Command;
 					m_CompletionChosen = Index + SearchType * NumCommands;
@@ -541,6 +686,13 @@ void CChat::EnableMode(int Team)
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
 		m_Input.Activate(EInputPriority::CHAT);
+
+		//RClient chat utils
+		m_MessageScrollOffset = 0;
+		m_ScrollbarDragging = false;
+		m_ScrollbarDragOffset = 0.0f;
+		if(g_Config.m_RiChatShowCursor)
+			SetUiMousePos(m_HasLastMousePos ? m_LastMousePos : Ui()->Screen()->Center());
 	}
 }
 
@@ -548,9 +700,32 @@ void CChat::DisableMode()
 {
 	if(m_Mode != MODE_NONE)
 	{
+		if(g_Config.m_RiChatShowCursor)
+		{
+			m_LastMousePos = MouseCursorPos();
+			m_HasLastMousePos = true;
+		}
+
+		//RClient utils
+		Ui()->ClosePopupMenu(&m_LinePopupContext);
+		m_ScrollbarDragging = false;
+		m_MessageScrollOffset = 0;
+		m_ScrollbarDragOffset = 0.0f;
+
 		m_Mode = MODE_NONE;
 		m_Input.Deactivate();
 	}
+}
+
+bool CChat::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
+{
+	if(!IsActive() || !g_Config.m_RiChatShowCursor)
+		return false;
+
+	Ui()->ConvertMouseMove(&x, &y, CursorType);
+	Ui()->OnCursorMove(x, y);
+
+	return true;
 }
 
 void CChat::OnMessage(int MsgType, void *pRawMsg)
@@ -789,13 +964,15 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	if(ClientId == CLIENT_MSG)
 		CustomColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
 
-	CLine &PreviousLine = m_aLines[m_CurrentLine];
+	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
 
 	// Team Number:
 	// 0 = global; 1 = team; 2 = sending whisper; 3 = receiving whisper
 
 	// If it's a client message, m_aText will have ": " prepended so we have to work around it.
-	if(PreviousLine.m_Initialized &&
+	CLine &PreviousLine = m_aLines[m_CurrentLine];
+	if(m_NumLines > 0 &&
+		PreviousLine.m_Initialized &&
 		PreviousLine.m_TeamNumber == Team &&
 		PreviousLine.m_ClientId == ClientId &&
 		str_comp(PreviousLine.m_aText, pLine) == 0 &&
@@ -808,11 +985,19 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		PreviousLine.m_aYOffset[0] = -1.0f;
 		PreviousLine.m_aYOffset[1] = -1.0f;
 
+		//RClient chat utils
+		PreviousLine.m_UnixTimestamp = time_timestamp();
+
 		FChatMsgCheckAndPrint(PreviousLine);
 		return;
 	}
 
+	if(m_MessageScrollOffset > 0)
+		++m_MessageScrollOffset;
+
 	m_CurrentLine = (m_CurrentLine + 1) % MAX_LINES;
+	if(m_NumLines < HistoryLineLimit())
+		++m_NumLines;
 
 	CLine &CurrentLine = m_aLines[m_CurrentLine];
 	CurrentLine.Reset(*this);
@@ -826,8 +1011,11 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	CurrentLine.m_Whisper = Team >= 2;
 	CurrentLine.m_NameColor = -2;
 	CurrentLine.m_CustomColor = CustomColor;
-	// Анимация: сохраняем время появления
+
+	//RClient chat utils
 	CurrentLine.m_AppearTime = time();
+	CurrentLine.m_UnixTimestamp = time_timestamp();
+	CurrentLine.m_Serial = ++m_NextLineSerial;
 
 	// check for highlighted name
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
@@ -980,7 +1168,10 @@ void CChat::OnPrepareLines(float y)
 	float FontSize = this->FontSize();
 
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
-	const bool ShowLargeArea = m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
+	const bool ShowLargeArea = m_Show ||
+		(m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) ||
+		g_Config.m_ClShowChat == 2 ||
+		(HasMouseCursor() && g_Config.m_RiChatScrollbar);
 	const bool ForceRecreate = IsScoreBoardOpen != m_PrevScoreBoardShowed || ShowLargeArea != m_PrevShowChat;
 	m_PrevScoreBoardShowed = IsScoreBoardOpen;
 	m_PrevShowChat = ShowLargeArea;
@@ -1004,8 +1195,13 @@ void CChat::OnPrepareLines(float y)
 	float Begin = x;
 	float TextBegin = Begin + RealMsgPaddingX / 2.0f;
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
+	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
+	const int StoredLineCount = minimum(m_NumLines, RenderHistoryLimit());
+	const int MaxLinesToPrepare = HasMouseCursor() && g_Config.m_RiChatScrollbar ?
+		minimum(StoredLineCount, maximum(CHAT_HISTORY_LINES_NO_SCROLLBAR, m_MessageScrollOffset + CHAT_HISTORY_LINES_NO_SCROLLBAR)) :
+		StoredLineCount;
 
-	for(int i = 0; i < MAX_LINES; i++)
+	for(int i = 0; i < MaxLinesToPrepare; i++)
 	{
 		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
 		if(!Line.m_Initialized)
@@ -1291,8 +1487,17 @@ void CChat::OnPrepareLines(float y)
 			{
 				FullWidth += maximum(LineCursor.m_LongestLineWidth, AppendCursor.m_LongestLineWidth);
 			}
+
+			//RClient chat utils
+			Line.m_BackgroundWidth = FullWidth;
+
 			Graphics()->SetColor(1, 1, 1, 1);
 			Line.m_QuadContainerIndex = Graphics()->CreateRectQuadContainer(Begin, y, FullWidth, Line.m_aYOffset[OffsetType], MessageRounding(), IGraphics::CORNER_ALL);
+		}
+		else
+		{
+			//RClient chat utils
+			Line.m_BackgroundWidth = 0.0f;
 		}
 
 		TextRender()->SetRenderFlags(CurRenderFlags);
@@ -1363,7 +1568,15 @@ void CChat::OnRender()
 		float ScrollOffset = m_Input.GetScrollOffset();
 		float ScrollOffsetChange = m_Input.GetScrollOffsetChange();
 
-		m_Input.Activate(EInputPriority::CHAT); // Ensure that the input is active
+		//RClient chat utils
+		if(HasMouseCursor() && Ui()->IsPopupOpen(&m_LinePopupContext))
+		{
+			m_Input.Deactivate();
+		}
+		else
+		{
+			m_Input.Activate(EInputPriority::CHAT); // Ensure that the input is active
+		}
 		const CUIRect InputCursorRect = {InputCursor.m_X, InputCursor.m_Y - ScrollOffset, 0.0f, 0.0f};
 		const bool WasChanged = m_Input.WasChanged();
 		const bool WasCursorChanged = m_Input.WasCursorChanged();
@@ -1385,29 +1598,37 @@ void CChat::OnRender()
 		m_Input.SetScrollOffsetChange(ScrollOffsetChange);
 
 		// Autocompletion hint
-		if(m_Input.GetString()[0] == '/' && m_Input.GetString()[1] != '\0' && !m_vServerCommands.empty())
+		if(IsChatCommandPrefix(m_Input.GetString()[0]) && m_Input.GetString()[1] != '\0' && !m_vServerCommands.empty())
 		{
+			char aCommandStart[MAX_LINE_LENGTH];
+			TransliterateCommand(m_Input.GetString() + 1, aCommandStart, sizeof(aCommandStart));
+
 			for(const auto &Command : m_vServerCommands)
 			{
-				if(str_startswith_nocase(Command.m_aName, m_Input.GetString() + 1))
+				if(str_startswith_nocase(Command.m_aName, aCommandStart))
 				{
 					InputCursor.m_X = InputCursor.m_X + TextRender()->TextWidth(InputCursor.m_FontSize, m_Input.GetString(), -1, InputCursor.m_LineWidth);
 					InputCursor.m_Y = m_Input.GetCaretPosition().y;
 					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.5f);
-					TextRender()->TextEx(&InputCursor, Command.m_aName + str_length(m_Input.GetString() + 1));
+					TextRender()->TextEx(&InputCursor, Command.m_aName + str_length(aCommandStart));
 					TextRender()->TextColor(TextRender()->DefaultTextColor());
 					break;
 				}
 			}
 		}
+
 	}
 
-#if defined(CONF_VIDEORECORDER)
+	#if defined(CONF_VIDEORECORDER)
 	if(!((g_Config.m_ClShowChat && !IVideo::Current()) || (g_Config.m_ClVideoShowChat && IVideo::Current())))
-#else
+	#else
 	if(!g_Config.m_ClShowChat)
-#endif
+	#endif
+	{
+		if(m_Mode != MODE_NONE && g_Config.m_RiChatShowCursor)
+			RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 		return;
+	}
 
 	y -= ScaledFontSize;
 
@@ -1415,9 +1636,27 @@ void CChat::OnRender()
 
 	bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
 
+	//RClient chat utils
+	const bool InteractiveChat = HasMouseCursor();
+	const bool ScrollbarEnabled = InteractiveChat && g_Config.m_RiChatScrollbar;
+	bool PopupOpen = HasMouseCursor() && Ui()->IsPopupOpen(&m_LinePopupContext);
+	bool PopupUiPrepared = false;
+	if(PopupOpen)
+	{
+		Ui()->StartCheck();
+		Ui()->Update();
+		PopupUiPrepared = true;
+	}
+	const vec2 MousePos = InteractiveChat ? UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height) : vec2(-1.0f, -1.0f);
+	const bool MousePressed = InteractiveChat && Input()->KeyIsPressed(KEY_MOUSE_1);
+	const bool MousePressedStarted = MousePressed && !m_LastCursorLeftPressed;
+	const bool MouseReleased = !MousePressed && m_LastCursorLeftPressed;
+
 	int64_t Now = time();
 	float HeightLimit = IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f);
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
+	const float ChatBottom = y;
+	const float ChatWidth = IsScoreBoardOpen ? maximum(85.0f, (FontSize() * 85.0f / 6.0f)) : g_Config.m_ClChatWidth;
 
 	float RealMsgPaddingX = MessagePaddingX();
 	float RealMsgPaddingY = MessagePaddingY();
@@ -1428,13 +1667,144 @@ void CChat::OnRender()
 		RealMsgPaddingY = 0;
 	}
 
-	for(int i = 0; i < MAX_LINES; i++)
+	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
+	const int StoredLineCount = minimum(m_NumLines, RenderHistoryLimit());
+
+	if(!ScrollbarEnabled)
 	{
-		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
+		m_MessageScrollOffset = 0;
+		m_ScrollbarDragging = false;
+		m_ScrollbarDragOffset = 0.0f;
+	}
+
+	struct CRenderableLine
+	{
+		int m_LineIndex;
+		float m_Height;
+	};
+	CRenderableLine aRenderableLines[MAX_LINES];
+	int RenderableLineCount = 0;
+	for(int i = 0; i < StoredLineCount; i++)
+	{
+		const int LineIndex = ((m_CurrentLine - i) + MAX_LINES) % MAX_LINES;
+		CLine &Line = m_aLines[LineIndex];
 		if(!Line.m_Initialized)
 			break;
 		if(Now > Line.m_Time + 16 * time_freq() && !m_PrevShowChat)
 			break;
+
+		aRenderableLines[RenderableLineCount++] = {LineIndex, Line.m_aYOffset[OffsetType]};
+	}
+
+	int MaxScrollOffset = 0;
+	if(RenderableLineCount > 0)
+	{
+		const float ViewHeight = maximum(0.0f, ChatBottom - HeightLimit);
+		float RemainingHeight = 0.0f;
+		for(int i = 0; i < RenderableLineCount; ++i)
+			RemainingHeight += aRenderableLines[i].m_Height;
+
+		while(MaxScrollOffset < RenderableLineCount && RemainingHeight > ViewHeight)
+		{
+			RemainingHeight -= aRenderableLines[MaxScrollOffset].m_Height;
+			++MaxScrollOffset;
+		}
+
+		MaxScrollOffset = minimum(MaxScrollOffset, RenderableLineCount - 1);
+	}
+	m_MessageScrollOffset = std::clamp(m_MessageScrollOffset, 0, MaxScrollOffset);
+
+	auto VisibleLineCount = [&](int ScrollOffset) {
+		float TestY = ChatBottom;
+		int Count = 0;
+		for(int i = ScrollOffset; i < RenderableLineCount; ++i)
+		{
+			TestY -= aRenderableLines[i].m_Height;
+			if(TestY < HeightLimit)
+				break;
+			++Count;
+		}
+		return Count;
+	};
+
+	const bool CanScroll = MaxScrollOffset > 0;
+	const bool ShowScrollbar = ScrollbarEnabled && CanScroll;
+	CUIRect ScrollbarRail{};
+	CUIRect ScrollbarHandle{};
+	bool MouseInScrollbarHandle = false;
+	if(ShowScrollbar)
+	{
+		const float ScrollbarWidth = maximum(4.0f, FontSize() * 0.4f);
+		const float ScrollbarGap = maximum(2.0f, FontSize() * 0.25f);
+		const float ScrollbarHeight = maximum(0.0f, ChatBottom - HeightLimit);
+		if(ScrollbarHeight > 0.0f)
+		{
+			ScrollbarRail = {x + ChatWidth + ScrollbarGap, HeightLimit, ScrollbarWidth, ScrollbarHeight};
+
+			auto UpdateScrollbarHandle = [&]() {
+				const int CurrentVisibleLines = maximum(1, VisibleLineCount(m_MessageScrollOffset));
+				ScrollbarHandle = ScrollbarRail;
+				const float HandleHeight = CanScroll ?
+					std::clamp(ScrollbarRail.h * CurrentVisibleLines / (float)RenderableLineCount, ScrollbarRail.w, ScrollbarRail.h) :
+					ScrollbarRail.h;
+				ScrollbarHandle.h = HandleHeight;
+				const float ScrollCurrent = CanScroll ? (1.0f - m_MessageScrollOffset / (float)MaxScrollOffset) : 1.0f;
+				ScrollbarHandle.y = ScrollbarRail.y + (ScrollbarRail.h - ScrollbarHandle.h) * ScrollCurrent;
+			};
+
+			UpdateScrollbarHandle();
+			const bool MouseInScrollbarRail = ScrollbarRail.Inside(MousePos);
+			MouseInScrollbarHandle = ScrollbarHandle.Inside(MousePos);
+
+			if(CanScroll && MousePressedStarted)
+			{
+				if(MouseInScrollbarHandle)
+				{
+					m_ScrollbarDragging = true;
+					m_ScrollbarDragOffset = MousePos.y - ScrollbarHandle.y;
+				}
+				else if(MouseInScrollbarRail)
+				{
+					m_ScrollbarDragging = true;
+					m_ScrollbarDragOffset = ScrollbarHandle.h / 2.0f;
+				}
+
+				if(m_ScrollbarDragging)
+				{
+					Ui()->ClosePopupMenu(&m_LinePopupContext);
+					PopupOpen = false;
+				}
+			}
+
+			if(MouseReleased || !CanScroll)
+				m_ScrollbarDragging = false;
+
+			if(m_ScrollbarDragging)
+			{
+				const float ScrollRange = maximum(1.0f, ScrollbarRail.h - ScrollbarHandle.h);
+				const float ScrollPos = std::clamp((MousePos.y - m_ScrollbarDragOffset) - ScrollbarRail.y, 0.0f, ScrollRange);
+				const float ScrollRelative = ScrollPos / ScrollRange;
+				const int NewScrollOffset = round_to_int((1.0f - ScrollRelative) * MaxScrollOffset);
+				if(NewScrollOffset != m_MessageScrollOffset)
+				{
+					m_MessageScrollOffset = NewScrollOffset;
+					Ui()->ClosePopupMenu(&m_LinePopupContext);
+					PopupOpen = false;
+				}
+
+				UpdateScrollbarHandle();
+				MouseInScrollbarHandle = ScrollbarHandle.Inside(MousePos);
+			}
+		}
+	}
+	else
+	{
+		m_ScrollbarDragging = false;
+	}
+
+	for(int i = m_MessageScrollOffset; i < RenderableLineCount; i++)
+	{
+		CLine &Line = m_aLines[aRenderableLines[i].m_LineIndex];
 
 		y -= Line.m_aYOffset[OffsetType];
 
@@ -1463,13 +1833,44 @@ void CChat::OnRender()
 
 		Blend *= AppearAlpha;
 
+		//RClient chat utils
+		CUIRect LineRect{5.0f, y, Line.m_BackgroundWidth, Line.m_aYOffset[OffsetType]};
+		bool Hovered = false;
+		if(InteractiveChat && !PopupOpen && Line.m_BackgroundWidth > 0.0f)
+		{
+			Hovered = LineRect.Inside(MousePos);
+			if(Hovered && MouseReleased)
+			{
+				const bool HasPlayer = Line.m_ClientId >= 0 && GameClient()->m_aClients[Line.m_ClientId].m_Active;
+				const vec2 PopupPos = MouseCursorPos();
+				const int ButtonCount = HasPlayer ? 5 : 3;
+				const float PopupHeight = CChatLinePopupContext::POPUP_OUTER_MARGIN + CChatLinePopupContext::POPUP_INNER_MARGIN * 2.0f +
+					CChatLinePopupContext::FONT_SIZE + ButtonCount * (CChatLinePopupContext::BUTTON_SIZE + CChatLinePopupContext::ITEM_SPACING * 2.0f);
+				m_LinePopupContext.m_pChat = this;
+				m_LinePopupContext.m_LineIndex = aRenderableLines[i].m_LineIndex;
+				m_LinePopupContext.m_LineSerial = Line.m_Serial;
+				Ui()->ClosePopupMenu(&m_LinePopupContext);
+				Ui()->DoPopupMenu(&m_LinePopupContext, PopupPos.x, PopupPos.y, CChatLinePopupContext::POPUP_WIDTH, PopupHeight, &m_LinePopupContext, CChatLinePopupContext::Render);
+				PopupOpen = true;
+			}
+		}
+
 		// Draw backgrounds for messages in one batch
 		if(!g_Config.m_ClChatOld)
 		{
 			Graphics()->TextureClear();
 			if(Line.m_QuadContainerIndex != -1)
 			{
-				Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend));
+				//RClient chat utils
+				ColorRGBA BackgroundColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend);
+				if(Hovered || (PopupOpen && m_LinePopupContext.m_LineSerial == Line.m_Serial))
+				{
+					BackgroundColor.r = minimum(1.0f, BackgroundColor.r + 0.12f);
+					BackgroundColor.g = minimum(1.0f, BackgroundColor.g + 0.12f);
+					BackgroundColor.b = minimum(1.0f, BackgroundColor.b + 0.12f);
+					BackgroundColor.a = minimum(1.0f, BackgroundColor.a + 0.18f);
+				}
+				Graphics()->SetColor(BackgroundColor);
 				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, 0, ((y + RealMsgPaddingY / 2.0f + SlideOffset) - Line.m_TextYOffset));
 			}
 		}
@@ -1498,6 +1899,33 @@ void CChat::OnRender()
 			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, 0, (y + RealMsgPaddingY / 2.0f + SlideOffset) - Line.m_TextYOffset);
 		}
 	}
+
+	//RClient chat utils
+	if(ShowScrollbar && ScrollbarRail.h > 0.0f)
+	{
+		ScrollbarRail.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.18f), IGraphics::CORNER_ALL, ScrollbarRail.w / 2.0f);
+		const bool HighlightHandle = m_ScrollbarDragging || MouseInScrollbarHandle;
+		const ColorRGBA HandleColor = HighlightHandle ? ColorRGBA(0.95f, 0.95f, 0.95f, 0.82f) : ColorRGBA(0.86f, 0.86f, 0.86f, 0.58f);
+		ScrollbarHandle.Draw(HandleColor, IGraphics::CORNER_ALL, ScrollbarHandle.w / 2.0f);
+	}
+
+	//RClient chat utils
+	if(PopupOpen)
+	{
+		if(!PopupUiPrepared)
+		{
+			Ui()->StartCheck();
+			Ui()->Update();
+		}
+		Ui()->MapScreen();
+		Ui()->RenderPopupMenus();
+		Ui()->FinishCheck();
+		Graphics()->MapScreen(0.0f, 0.0f, Width, Height);
+	}
+	m_LastCursorLeftPressed = MousePressed;
+
+	if(m_Mode != MODE_NONE && g_Config.m_RiChatShowCursor)
+		RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 }
 
 void CChat::EnsureCoherentFontSize() const
@@ -1520,43 +1948,43 @@ void CChat::EnsureCoherentWidth() const
 	g_Config.m_ClChatWidth = CHAT_FONTSIZE_WIDTH_RATIO * g_Config.m_ClChatFontSize;
 }
 
-// Функция для транслитерации русских команд в английские по раскладке клавиатуры
-const char *TransliterateCommand(const char *pCommand)
+const CChat::CCommand *CChat::FindCommand(const char *pName) const
 {
-	// Таблица соответствия русских букв английским по раскладке клавиатуры
-	static const struct
+	for(const auto &Command : m_vServerCommands)
 	{
-		const char *pRu;
-		const char *pEn;
-	} s_aTranslit[] = {
-		{"е", "t"}, {"у", "e"}, {"ф", "a"}, {"ь", "m"},
-		{"д", "l"}, {"щ", "o"}, {"с", "c"}, {"л", "k"},
-		{"з", "p"}, {"ы", "z"}, {"и", "b"}, {"к", "r"},
-		{"а", "f"}, {"в", "d"}, {"г", "u"}, {"ё", "`"},
-		{"ж", ";"}, {"й", "q"}, {"м", "v"}, {"н", "y"},
-		{"о", "j"}, {"п", "g"}, {"р", "h"}, {"т", "n"},
-		{"х", "["}, {"ц", "w"}, {"ч", "x"}, {"ш", "i"},
-		{"ъ", "]"}, {"э", "s"}, {"ю", "."}, {"я", "`"},
-		{"б", ","}};
-
-	static char aResult[256];
-	str_copy(aResult, pCommand, sizeof(aResult));
-
-	// Заменяем каждую русскую букву на соответствующую английскую
-	for(const auto &Pair : s_aTranslit)
-	{
-		const char *pPos = aResult;
-		while((pPos = str_find(pPos, Pair.pRu)) != nullptr)
-		{
-			char aTemp[256];
-			str_copy(aTemp, pPos + str_length(Pair.pRu), sizeof(aTemp));
-			str_copy((char *)pPos, Pair.pEn, sizeof(aResult) - (pPos - aResult));
-			str_append((char *)pPos, aTemp, sizeof(aResult) - (pPos - aResult));
-			pPos += str_length(Pair.pEn);
-		}
+		if(str_comp_nocase(Command.m_aName, pName) == 0)
+			return &Command;
 	}
 
-	return aResult;
+	return nullptr;
+}
+
+bool CChat::TryTranslateCommand(const char *pLine, char *pLineBuf, size_t LineBufSize) const
+{
+	if(!IsChatCommandPrefix(pLine[0]) || pLine[1] == '\0')
+		return false;
+
+	char aCommand[MAX_LINE_LENGTH];
+	char aTransliteratedCommand[MAX_LINE_LENGTH];
+
+	const char *pArgs = str_find(pLine, " ");
+	if(pArgs != nullptr)
+		str_truncate(aCommand, sizeof(aCommand), pLine + 1, pArgs - (pLine + 1));
+	else
+		str_copy(aCommand, pLine + 1, sizeof(aCommand));
+
+	TransliterateCommand(aCommand, aTransliteratedCommand, sizeof(aTransliteratedCommand));
+
+	const CCommand *pCommand = FindCommand(aTransliteratedCommand);
+	if(pCommand == nullptr)
+		return false;
+
+	if(pArgs != nullptr)
+		str_format(pLineBuf, LineBufSize, "/%s%s", pCommand->m_aName, pArgs);
+	else
+		str_format(pLineBuf, LineBufSize, "/%s", pCommand->m_aName);
+
+	return true;
 }
 
 void CChat::SendChat(int Team, const char *pLine)
@@ -1567,43 +1995,9 @@ void CChat::SendChat(int Team, const char *pLine)
 
 	m_LastChatSend = time();
 
-	// Проверяем, начинается ли сообщение с точки или слеша
-	if(pLine[0] == '.' || pLine[0] == '/')
-	{
-		// Разделяем команду и параметры
-		char aCommand[256];
-		const char *pSpace = str_find(pLine, " ");
-		if(pSpace)
-		{
-			str_truncate(aCommand, sizeof(aCommand), pLine, pSpace - pLine);
-		}
-		else
-		{
-			str_copy(aCommand, pLine, sizeof(aCommand));
-		}
-
-		const char *pTranslit = TransliterateCommand(aCommand);
-
-		// Проверяем, есть ли такая команда в списке
-		for(const auto &Command : m_vServerCommands)
-		{
-			if(str_comp_nocase(Command.m_aName, pTranslit + 1) == 0)
-			{
-				// Если команда найдена, отправляем её английскую версию с параметрами
-				char aBuf[256];
-				if(pSpace)
-				{
-					str_format(aBuf, sizeof(aBuf), "/%s%s", Command.m_aName, pSpace);
-				}
-				else
-				{
-					str_format(aBuf, sizeof(aBuf), "/%s", Command.m_aName);
-				}
-				pLine = aBuf;
-				break;
-			}
-		}
-	}
+	char aCommandLine[MAX_LINE_LENGTH];
+	if(TryTranslateCommand(pLine, aCommandLine, sizeof(aCommandLine)))
+		pLine = aCommandLine;
 
 	if(GameClient()->Client()->IsSixup())
 	{
@@ -1833,4 +2227,120 @@ const char *CChat::FilterText(const char *pMessage, int ClientId, bool IsChat)
 	}
 
 	return s_aFilteredMessage;
+}
+
+CUi::EPopupMenuFunctionResult CChat::CChatLinePopupContext::Render(void *pContext, CUIRect View, bool Active)
+{
+	CChatLinePopupContext *pPopupContext = static_cast<CChatLinePopupContext *>(pContext);
+	CChat *pChat = pPopupContext->m_pChat;
+	if(pPopupContext->m_LineIndex < 0 || pPopupContext->m_LineIndex >= MAX_LINES)
+		return CUi::POPUP_CLOSE_CURRENT;
+
+	const CLine &Line = pChat->m_aLines[pPopupContext->m_LineIndex];
+	if(!Line.m_Initialized || Line.m_Serial != pPopupContext->m_LineSerial)
+		return CUi::POPUP_CLOSE_CURRENT;
+
+	const bool HasPlayer = Line.m_ClientId >= 0 && pChat->GameClient()->m_aClients[Line.m_ClientId].m_Active;
+	View.Margin(POPUP_INNER_MARGIN, &View);
+
+	CUIRect Label, Button;
+	View.HSplitTop(FONT_SIZE, &Label, &View);
+	pChat->Ui()->DoLabel(&Label, HasPlayer ? pChat->GameClient()->m_aClients[Line.m_ClientId].m_aName : Localize("Chat message"), FONT_SIZE, TEXTALIGN_ML);
+
+	auto OpenChatWithText = [&](int Team, const char *pText) {
+		if(!pChat->IsActive())
+			pChat->EnableMode(Team);
+		else
+		{
+			pChat->m_Mode = Team ? MODE_TEAM : MODE_ALL;
+			pChat->m_Input.Activate(EInputPriority::CHAT);
+		}
+
+		pChat->m_CompletionChosen = -1;
+		pChat->m_CompletionUsed = false;
+		pChat->m_pHistoryEntry = nullptr;
+		pChat->m_EditingNewLine = true;
+		pChat->m_Input.Set(pText);
+	};
+
+	auto DoButton = [&](CButtonContainer *pButton, const char *pLabel, auto &&OnClick) {
+		View.HSplitTop(ITEM_SPACING * 2, nullptr, &View);
+		View.HSplitTop(BUTTON_SIZE, &Button, &View);
+		if(pChat->Ui()->DoButton_PopupMenu(pButton, pLabel, &Button, FONT_SIZE, TEXTALIGN_MC))
+		{
+			OnClick();
+			return true;
+		}
+		return false;
+	};
+
+	if(DoButton(&pPopupContext->m_CopyButton, Localize("Copy"), [&]() {
+		   char aBuf[1024];
+		   str_format(aBuf, sizeof(aBuf), "%s%s%s", Line.m_aName, Line.m_ClientId >= 0 ? ": " : "", Line.m_aText);
+		   pChat->Input()->SetClipboardText(aBuf);
+	   }))
+	{
+		return CUi::POPUP_CLOSE_CURRENT;
+	}
+
+	if(DoButton(&pPopupContext->m_CopyMsgButton, Localize("Copy Msg"), [&]() {
+		   pChat->Input()->SetClipboardText(Line.m_aText);
+	   }))
+	{
+		return CUi::POPUP_CLOSE_CURRENT;
+	}
+
+	if(HasPlayer)
+	{
+		if(DoButton(&pPopupContext->m_ReplyButton, Localize("Reply"), [&]() {
+			   char aBuf[MAX_LINE_LENGTH];
+			   str_format(aBuf, sizeof(aBuf), "%s: ", pChat->GameClient()->m_aClients[Line.m_ClientId].m_aName);
+			   OpenChatWithText(0, aBuf);
+		   }))
+		{
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+
+		if(DoButton(&pPopupContext->m_WhisperButton, Localize("Whisper"), [&]() {
+			   char aBuf[MAX_LINE_LENGTH];
+			   const char *pName = pChat->GameClient()->m_aClients[Line.m_ClientId].m_aName;
+			   if(str_find(pName, " ") || str_find(pName, "\""))
+			   {
+				   char aQuoted[128];
+				   str_copy(aQuoted, "\"");
+				   char *pDst = aQuoted + str_length(aQuoted);
+				   str_escape(&pDst, pName, aQuoted + sizeof(aQuoted));
+				   str_append(aQuoted, "\"");
+				   str_format(aBuf, sizeof(aBuf), "/whisper %s ", aQuoted);
+			   }
+			   else
+			   {
+				   str_format(aBuf, sizeof(aBuf), "/whisper %s ", pName);
+			   }
+			   OpenChatWithText(0, aBuf);
+		   }))
+		{
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+	}
+
+	if(DoButton(&pPopupContext->m_CopyFullButton, Localize("Copy Full Msg"), [&]() {
+		   char aBuf[1200];
+		   char aTimestamp[64];
+		   str_timestamp_ex(Line.m_UnixTimestamp, aTimestamp, sizeof(aTimestamp), TimestampFormat::SPACE);
+		   const char *pSystem = Line.m_Whisper ? "chat/whisper" :
+			   Line.m_Team ? "chat/team" :
+			   Line.m_ClientId == SERVER_MSG ? "chat/server" :
+			   Line.m_ClientId == CLIENT_MSG ? "chat/client" :
+						"chat/all";
+		   char aMessage[1024];
+		   str_format(aMessage, sizeof(aMessage), "%s%s%s", Line.m_aName, Line.m_ClientId >= 0 ? ": " : "", Line.m_aText);
+		   str_format(aBuf, sizeof(aBuf), "%s I %s: %s", aTimestamp, pSystem, aMessage);
+		   pChat->Input()->SetClipboardText(aBuf);
+	   }))
+	{
+		return CUi::POPUP_CLOSE_CURRENT;
+	}
+
+	return Active ? CUi::POPUP_KEEP_OPEN : CUi::POPUP_CLOSE_CURRENT;
 }

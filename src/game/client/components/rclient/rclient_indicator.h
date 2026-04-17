@@ -7,19 +7,13 @@
 #include <engine/shared/http.h>
 
 #include <memory>
+#include <atomic>
 #include <string>
 #include <utility>
 #include <vector>
 
 class CRClientIndicator : public CComponent
 {
-	std::shared_ptr<CHttpRequest> m_pAuthTokenTask = nullptr;
-	void FetchAuthToken();
-	void FinishAuthToken();
-	void ResetAuthToken();
-
-	char m_aAuthToken[128] = {0};
-
 	std::shared_ptr<CHttpRequest> m_pRClientUsersTaskSend = nullptr;
 	std::shared_ptr<CHttpRequest> m_pRClientUsersTask = nullptr;
 
@@ -31,6 +25,7 @@ class CRClientIndicator : public CComponent
 	void ResetRClientUsersSend();
 
 	void ApplyPollHeaders(CHttpRequest &Request, const char *pServerAddress, int ClientId, int DummyClientId);
+	void ClearVoiceAuth();
 	void ClearUsers();
 
 	struct SRClientUserInfo
@@ -38,12 +33,14 @@ class CRClientIndicator : public CComponent
 		std::string m_ServerAddress;
 		int m_PlayerId;
 		bool m_VoiceEnabled;
+		bool m_VoiceMuted;
 	};
 
 	std::vector<SRClientUserInfo> m_vRClientUsers; // server address, player id, voice enabled
 
-	int64_t m_LastTokenAttempt = 0;
 	int64_t m_LastPollAttempt = 0;
+	std::atomic<uint32_t> m_VoiceAuthTimestamp{0};
+	std::atomic<uint64_t> m_VoiceAuthHash{0};
 
 	bool m_WasOnline = false;
 	std::string m_LastServerAddress;
@@ -59,6 +56,8 @@ public:
 
 	bool IsPlayerRClient(int ClientId);
 	bool IsPlayerRClientVoiceEnabled(int ClientId);
+	bool IsPlayerRClientVoiceMuted(int ClientId);
+	bool GetCachedVoiceAuth(uint32_t &Timestamp, uint64_t &Hash) const;
 };
 
 #endif // RCLIENT_RCLIENT_INDICATOR_H

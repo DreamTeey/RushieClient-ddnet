@@ -27,7 +27,6 @@ struct DenoiseState;
 struct SRClientVoiceConfigSnapshot
 {
 	int m_RiVoiceFilterEnable = 0;
-	int m_RiVoiceProtocolVersion = 0;
 	int m_RiVoiceNoiseSuppressEnable = 0;
 	int m_RiVoiceNoiseSuppressStrength = 0;
 	int m_RiVoiceCompThreshold = 0;
@@ -102,6 +101,7 @@ class CRClientVoice
 		float m_JitterMs = 0.0f;
 		int m_TargetFrames = 3;
 		int m_QueuedPackets = 0;
+		int m_PlcFrames = 0;
 		SJitterPacket m_aPackets[MAX_JITTER_PACKETS] = {};
 		SVoiceFrame m_aFrames[MAX_FRAMES] = {};
 		int m_FrameHead = 0;
@@ -153,6 +153,7 @@ class CRClientVoice
 	float m_HpfPrevIn = 0.0f;
 	float m_HpfPrevOut = 0.0f;
 	float m_CompEnv = 0.0f;
+	float m_CompGain = 1.0f;
 	float m_NsNoiseFloor = 0.0f;
 	float m_NsGain = 1.0f;
 	DenoiseState *m_pNoiseSuppress = nullptr;
@@ -180,6 +181,8 @@ class CRClientVoice
 	std::atomic<uint32_t> m_ContextHash = 0;
 	int64_t m_LastKeepalive = 0;
 	uint32_t m_LastTokenHashSent = 0;
+	uint32_t m_LastVoiceAuthTimestampSent = 0;
+	uint64_t m_LastVoiceAuthHashSent = 0;
 
 	// Debug counters (worker thread only)
 	int64_t m_TxLastLog = 0;

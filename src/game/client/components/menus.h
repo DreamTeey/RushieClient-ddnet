@@ -63,6 +63,85 @@ public:
 
 	bool DoFloatScrollBar(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, int DivideBy, const IScrollbarScale *pScale, unsigned Flags, const char *pSuffix);
 
+#define RUSHIE_SETTINGS_SECTION_LIST(X) \
+	X(COPY_SKINS, "Player Inspector", "", FontIcon::RC_MAGNIFYING_GLASS, nullptr, 0, 0, 0) \
+	X(DUMMY_CHANGE_CLAN, "Dummy Change Clan", "", FontIcon::RC_USER_TAG, &g_Config.m_PlayerClanAutoChange, 0, 1, 0) \
+	X(CHAT_FUNCTIONS, "Chat Functions", "", FontIcon::RC_COMMENT_MEDICAL, nullptr, 0, 0, 0) \
+	X(CHAT_FILTER, "Chat Filter", "", FontIcon::RC_FILTER, &g_Config.m_RiEnableCensorList, 0, 1, 0) \
+	X(CHAT_ANIMATE, "Chat Animate", "", FontIcon::RC_BARS_STAGGERED, &g_Config.m_RiChatAnim, 0, 1, 0) \
+	X(CHAT_UTILS, "Chat Utils", "", FontIcon::RC_COMMENT_DOTS, &g_Config.m_RiChatShowCursor, 0, 1, 0) \
+	X(SCOREBOARD_SORT, "Scoreboard Sort", "", FontIcon::RC_ARROW_DOWN_WIDE_SHORT, nullptr, 0, 0, 0) \
+	X(SCOREBOARD_HEART, "Scoreboard Heart", "", FontIcon::HEART, &g_Config.m_RiScoreboardFriendMark, 0, 1, 0) \
+	X(SCOREBOARD_ACTIONS, "Scoreboard Actions", "", FontIcon::RC_USER_GEAR, &g_Config.m_RiScoreboardAlwaysShowQuickActions, 0, 1, 0) \
+	X(CHANGED_TATER, "Changed Tater", "", FontIcon::ARROWS_ROTATE, nullptr, 0, 0, 0) \
+	X(NAMEPLATES_SCHEME, "Nameplates Scheme", "RClient", FontIcon::RC_TABLE_CELLS, nullptr, 0, 0, 0) \
+	X(NAMEPLATES_FIRE, "Nameplates Show Fire", "RClient", FontIcon::RC_FIRE, &g_Config.m_RiShowFire, 0, 2, 0) \
+	X(NAMEPLATES_HOOK, "Nameplates Show Hook", "RClient", FontIcon::RC_LINK, &g_Config.m_RiShowHook, 0, 2, 0) \
+	X(DUMMY_TRACKER, "Dummy Tracker", "", FontIcon::RC_LIST_TRACK, &g_Config.m_RiShowhudDummyPosition, 0, 1, 0) \
+	X(ADVANCED_DUMMY_HUD, "Advanced Dummy Hud", "RClient", FontIcon::ICON_USERS, &g_Config.m_RiAdvancedShowhudDummyActions, 0, 1, 0) \
+	X(TRAILS, "Trails", "", FontIcon::RC_WIND, &g_Config.m_RiShowSparkleTrail, 0, 1, 0) \
+	X(AFK_EMOTE_TEXTURE_IN_MENU, "AFK Emote/Texture In Menu", "", FontIcon::RC_MOON, &g_Config.m_RiShowAfkEmoteInMenu, 0, 1, 0) \
+	X(AFK_EMOTE_TEXTURE_IN_SPEC, "AFK Emote/Texture In Spec", "", FontIcon::RC_MOON, &g_Config.m_RiShowAfkEmoteInSpec, 0, 1, 0) \
+	X(SHOW_FROZEN_FLAKES, "Disable Frozen Flakes", "", FontIcon::RC_SNOWFLAKE, &g_Config.m_RiShowFrozenFlakes, 1, 0, 0) \
+	X(SHOW_HAMMER_HIT, "Hide Hammer Hit", "", FontIcon::RC_GAVEL, &g_Config.m_RiShowHammerHit, 1, 0, 0) \
+	X(SOUND_ON_MOVE, "Sound On Move", "", FontIcon::RC_BELL, &g_Config.m_RiPlayOnMoveNonInactive, 0, 1, 0) \
+	X(MENU, "Menu", "", FontIcon::GEAR, &g_Config.m_RiUiNewMenu, 0, 1, 0) \
+	X(MUSIC_PLAYER, "Music Player", "", FontIcon::MUSIC, &g_Config.m_RiShowMusicIsland, 0, 1, 0) \
+	X(TRACKER, "Tracker", "", FontIcon::RC_LIST_TRACK, nullptr, 0, 0, 1) \
+	X(MILLISECOND_IN_GAME_TIMER, "Millisecond In Game Timer", "", FontIcon::RC_STOPWATCH, &g_Config.m_RiShowMilliSecondsTimer, 0, 1, 1) \
+	X(HEART_SIZE_IN_NAMEPLATE, "Heart Size In Nameplate", "RClient", FontIcon::HEART, nullptr, 0, 0, 1) \
+	X(BINDS, "Binds", "", FontIcon::KEYBOARD, nullptr, 0, 0, 1) \
+	X(BETTER_LASERS, "Better Lasers (Pulse)", "", FontIcon::RC_PERSON_RIFLE, &g_Config.m_RiBetterLasers, 0, 1, 1) \
+	X(SPECTATOR_MOVE, "Spectator Move", "", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable, 0, 1, 1) \
+	X(SPECTATOR_SORT, "Spectator Sort", "", FontIcon::RC_ARROW_DOWN_WIDE_SHORT, &g_Config.m_RiSpectatorSortById, 0, 2, 1) \
+	X(FIND_TELEPORT, "Find teleport", "", FontIcon::RC_LOCATION_CROSSHAIRS, nullptr, 0, 0, 1) \
+	X(FIND_FINISH, "Find finish", "", FontIcon::RC_LOCATION_CROSSHAIRS, nullptr, 0, 0, 1) \
+	X(PLAYER_MENU, "Player Menu", "", FontIcon::RC_ADDRESS_CARD, nullptr, 0, 0, 1) \
+	X(CHAT_BUBBLES, "Chat Bubbles (Entity)", "", FontIcon::COMMENT, &g_Config.m_RiChatBubbles, 0, 1, 1) \
+	X(RI_INDICATOR, "RClient User Indicator", "", FontIcon::BOOKMARK, &g_Config.m_RiShowRclientIndicator, 0, 1, 1) \
+	X(EDGE_INFO, "Edge Info", "", FontIcon::RC_BORDER_TOP_LEFT, nullptr, 0, 0, 1) \
+	X(VOICE, "Voice", "", FontIcon::RC_MICROPHONE, &g_Config.m_RiVoiceEnable, 0, 1, 1) \
+	X(RCON, "Admin Panel", "", FontIcon::RC_GAVEL, nullptr, 0, 1, 1) \
+	X(PERCENT_VOTE_BAR, "Percent In Vote Bar", "", FontIcon::RC_BARS_PROGRESS, &g_Config.m_RiShowPercentInVoteBar, 0, 1, 1) \
+	X(SHOW_FIND_CHECKPOINT, "Show/Find Checkpoint", "", FontIcon::RC_LOCATION_DOT, &g_Config.m_RiShowCheckpointInHud, 0, 1, 1) \
+	X(COMPACT_ANGLE_CHECKPOINT, "Compact Angle/Checkpoint", "", FontIcon::RC_COMPASS, &g_Config.m_RiHudOneLine, 0, 1, 1) \
+	X(PLAYER_JOIN_SOUND, "Player Join Sound", "", FontIcon::RC_BELL, &g_Config.m_RiJoinSoundEnable, 0, 1, 1) \
+
+	enum ERushieSettingsSection
+	{
+#define RUSHIE_SETTINGS_SECTION_ENUM(Name, Title, TitleContext, Icon, MainToggle, DisabledValue, EnabledValue, Column) SETTINGS_SECTION_##Name,
+		RUSHIE_SETTINGS_SECTION_LIST(RUSHIE_SETTINGS_SECTION_ENUM)
+#undef RUSHIE_SETTINGS_SECTION_ENUM
+		NUM_RUSHIE_SETTINGS_SECTIONS
+	};
+	struct SRushieSettingsSectionEntry
+	{
+		ERushieSettingsSection m_Section;
+		const char *m_pTitle;
+		const char *m_pTitleContext;
+		const char *m_pIcon;
+		int *m_pMainToggle;
+		int m_MainToggleDisabledValue;
+		int m_MainToggleEnabledValue;
+		int m_Column;
+
+		bool HasMainToggle() const { return m_pMainToggle != nullptr; }
+		bool IsMainToggleEnabled() const { return HasMainToggle() && *m_pMainToggle != m_MainToggleDisabledValue; }
+		void SetMainToggleEnabled(bool Enabled) const
+		{
+			if(HasMainToggle())
+				*m_pMainToggle = Enabled ? m_MainToggleEnabledValue : m_MainToggleDisabledValue;
+		}
+	};
+	static const SRushieSettingsSectionEntry *GetRushieSettingsSectionEntries();
+	static int GetNumRushieSettingsSections();
+	static const SRushieSettingsSectionEntry &GetRushieSettingsSectionEntry(ERushieSettingsSection SectionId);
+	bool IsRushieSettingsSectionVisible(ERushieSettingsSection SectionId) const;
+	void RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId);
+	void RenderRushieVoiceMix(CUIRect MainView);
+	void RenderRushieInfoPanel(CUIRect MainView);
+	void SetRushieVoiceMixTab(int Tab);
+
 private:
 	CUi::SColorPickerPopupContext m_ColorPickerPopupContext;
 	ColorHSLA DoLine_ColorPicker(CButtonContainer *pResetId, float LineSize, float LabelSize, float BottomMargin, CUIRect *pMainRect, const char *pText, unsigned int *pColorValue, ColorRGBA DefaultColor, bool CheckBoxSpacing = true, int *pCheckBoxValue = nullptr, bool Alpha = false);
@@ -727,6 +806,7 @@ public:
 		SMALL_TAB_QUIT,
 		SMALL_TAB_SETTINGS,
 		SMALL_TAB_EDITOR,
+		SMALL_TAB_LAUNCH_CLIENT,
 		SMALL_TAB_DEMOBUTTON,
 		SMALL_TAB_SERVER,
 		SMALL_TAB_BROWSER_FILTER,
@@ -872,6 +952,7 @@ private:
 	void RenderSettingsRushieInfo(CUIRect MainView);
 	void RenderSettingsRushieBindWheelSpec(CUIRect MainView);
 	void RenderSettingsRushieVoiceVolumes(CUIRect MainView);
+	void RenderSettingsRushieProfiles(CUIRect MainView);
 
 	// MClient
 	void RenderSettingsMClient(CUIRect MainView);
